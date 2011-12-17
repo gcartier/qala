@@ -1,0 +1,15 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Project
+;;;
+
+
+(data jazz.ide.data.project
+
+
+(form
+  (<Project> name: qala description-file: {File :context ".repository"}
+    (<*>                tag-reference: {File :context "jazz" ".project"})
+    (<*>                tag-reference: {File :context "lib" "qala" ".project"}))))

@@ -1,0 +1,3 @@
+(repository Qala
+
+  (library "lib"))
