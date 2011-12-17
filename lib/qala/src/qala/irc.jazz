@@ -1,0 +1,251 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala IRC
+;;;
+
+
+(module qala.irc jazz
+
+
+(import (jazz.library)
+        (qala.settings))
+
+
+(define default-server-address
+  "irc.freenode.org")
+
+(define default-port-number
+  6667)
+
+
+;;;
+;;;; IRC-Client
+;;;
+
+
+(class IRC-Client extends Object
+  
+  
+  (slot server-address getter generate)
+  (slot port-number    getter generate)
+  
+  
+  (slot nick   initialize #f accessors generate)
+  (slot view   initialize #f)
+  (slot port   initialize #f)
+  (slot debug? initialize (qala-debug?) accessors generate)
+  
+  
+  (method override (initialize (server-address: server-address #f) (port-number: port-number #f) (view: view #f))
+    (nextmethod)
+    (set! server-address~self (or server-address default-server-address))
+    (set! port-number~self (or port-number default-port-number))
+    (set! view~self view))
+  
+  
+  ;;;
+  ;;;; Connection
+  ;;;
+  
+  
+  (method public (connect)
+    (set! port (open-tcp-client (list server-address: server-address port-number: port-number))))
+  
+  
+  (method public (disconnect)
+    (close-port port)
+    (set! port #f))
+  
+  
+  ;;;
+  ;;;; Input
+  ;;;
+  
+  
+  (method public (process-input)
+    (let ((line (read-line port)))
+      (unless (eof-object? line)
+        (process-line line)
+        #t)))
+  
+  
+  (method (process-line line)
+    (define (process prefix command params)
+      (let ((parameters (parse-parameters params)))
+        (cond ((ci=? command "332")
+               (bind (nickname channel-name topic) parameters
+                 (topic-callback~ view channel-name topic)))
+              ((ci=? command "333")
+               (bind (nickname channel-name owner) parameters
+                 (topic-owner-callback~ view channel-name owner)))
+              ((ci=? command "353")
+               (bind (nickname equal channel-name members) parameters
+                 (names-callback~ view channel-name (split members " "))))
+              ((ci=? command "366")
+               (bind (nickname channel-name) parameters
+                 (names-end-callback~ view channel-name)))
+              ((ci=? command "NOTICE")
+               (bind (star message) parameters
+                 (notice-callback~ view message)))
+              ((ci=? command "PING")
+               (let ((reply (car parameters)))
+                 (pong-command reply)))
+              ((ci=? command "JOIN")
+               (receive (nickname user host) (parse-prefix prefix)
+                 (let ((channel-name (car parameters)))
+                   (join-callback~ view nickname user channel-name))))
+              ((ci=? command "PART")
+               (receive (nickname user host) (parse-prefix prefix)
+                 (let ((channel-name (car parameters)))
+                   (part-callback~ view nickname user channel-name))))
+              ((ci=? command "QUIT")
+               (receive (nickname user host) (parse-prefix prefix)
+                 (quit-callback~ view nickname user)))
+              ((ci=? command "PRIVMSG")
+               (match-regexp prefix
+                 (("([^!]+)!([^ ]+)" nickname host)
+                  (let ((style (if (equal? nickname nick) 'Self 'Message)))
+                    (bind (destination message) parameters
+                      (privmsg-callback~ view nickname destination message))))))
+              ((numeric? command)
+               (bind (nickname . messages) parameters
+                 (numeric-callback~ view nickname messages)))
+              (else
+               (default-callback~ view prefix command parameters)))))
+    
+    (define (parse-prefix prefix)
+      (match-regexp prefix
+        (("^([^!]+)!([^ ]+)@([^ ]+)" nickname user host)
+         (values nickname user host))))
+    
+    (define (parse-parameters params)
+      (let ((size (string-length params)))
+        (let (iter (pos 0) (parameters '()))
+          (let ((following (+ pos 1)))
+            (if (and (< following size)
+                     (eqv? (string-ref params following) #\:))
+                (reverse! (cons (substring params (+ following 1) size) parameters))
+              (let ((next (find params #\space start: following)))
+                (if next
+                    (iter next (cons (substring params following next) parameters))
+                  (reverse! (cons (substring params following size) parameters)))))))))
+    
+    (when debug?
+      (debug 'received line))
+    (match-regexp line
+      (("^:([^ ]+) ([^ ]+)(.*)\r$" prefix command params)
+       (process prefix command params))
+      (("^([^ ]+)(.*)\r$" command params)
+       (process #f command params))))
+  
+  
+  ;;;
+  ;;;; Output
+  ;;;
+  
+  
+  (method public (send message)
+    (display message port)
+    (newline port)
+    (force-output port)
+    (when debug?
+      (debug 'sent message)))
+  
+  
+  ;;;
+  ;;;; Commands
+  ;;;
+  
+  
+  (method public (process channel-name message)
+    (match-regexp message
+      (("^/mark$")                                   (mark-command))
+      (("^/clear$")                                  (clear-command))
+      (("^/quit (.+)$" message)                      (quit-command message))
+      (("^/quit$")                                   (quit-command))
+      (("^/me (.+)$" message)                        (action-command channel-name message))
+      (("^/pass (.+)$" password)                     (pass-command password))
+      (("^/nick (.+)$" nickname)                     (nick-command nickname))
+      (("^/user ([^ ]+) (.+)$" user realname)        (user-command user realname))
+      (("^/oper ([^ ]+) (.+)$" name password)        (oper-command name password))
+      (("^/mode$")                                   (mode-command nick))
+      (("^/mode (.+)$" flags)                        (mode-command nick flags))
+      (("^/mode (#.+)$" channel)                     (mode-command channel))
+      (("^/mode (#.+) (.+)$" channel flags)          (mode-command channel flags))
+      (("^/join (.+)$" channel-name)                 (join-command channel-name))
+      (("^/part ([^ ]+)$" channel-name)              (part-command channel-name))
+      (("^/part ([^ ]+) (.+)$" channel-name message) (part-command channel-name message))
+      (("^/part$")                                   (part-command channel-name))
+      (("^/topic (.+)$" message)                     (topic-command channel-name message))
+      (("^/ctcp (.+?) (.+)$" dest message)           (ctcp-command dest message))
+      (("^/notice (.+?) (.+)$" dest message)         (notice-command dest message))
+      (("^/msg (.+?) (.+)$" dest message)            (privmsg-command dest message))
+      (else                                          (privmsg-command channel-name message))))
+  
+  
+  (method (pong-command reply)
+    (send (format "PONG {a}" reply)))
+  
+  
+  (method (pass-command password)
+    (send (format "PASS {a}" password)))
+  
+  
+  (method (nick-command nickname)
+    (send (format "NICK {a}" nickname))
+    (set! nick nickname))
+  
+  
+  (method (user-command user realname)
+    (send (format "USER {a} 0 * :{a}" user realname)))
+  
+  
+  (method (oper-command name password)
+    (send (format "OPER {a} {a}" name password)))
+  
+  
+  (method (mode-command nickname (flags #f))
+    (send (format "MODE {a}{? {a}~}" nickname flags)))
+  
+  
+  (method (privmsg-command destination message)
+    (send (format "PRIVMSG {a} :{a}" destination message))
+    (privmsg-callback~ view nick destination message))
+  
+  
+  (method (join-command channel-name)
+    (send (format "JOIN {a}" channel-name)))
+  
+  
+  (method (part-command channel-name (message ""))
+    (send (format "PART {a} :{a}" channel-name message)))
+  
+  
+  (method (topic-command channel-name message)
+    (send (format "TOPIC {a} :{a}" channel-name message)))
+  
+  
+  (method (ctcp-command destination message)
+    (privmsg-command destination (string-append "\001" message "\001")))
+  
+  
+  (method (action-command destination message)
+    (ctcp-command destination (string-append "ACTION " message)))
+  
+  
+  (method (notice-command destination message)
+    (send (format "NOTICE {a} :{a}" destination message)))
+  
+  
+  (method (mark-command)
+    (mark-callback~ view))
+  
+  
+  (method (clear-command)
+    (clear-callback~ view))
+  
+  
+  (method (quit-command (message ""))
+    (send (format "QUIT :{a}" message)))))

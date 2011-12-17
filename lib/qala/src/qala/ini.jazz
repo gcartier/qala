@@ -1,0 +1,27 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala Ini
+;;;
+
+
+(module qala.ini jazz
+
+
+(export (qala.settings))
+
+(import (jazz.library)
+        (jazz.ui)
+        (jazz.ui.view)
+        (qala.irc)
+        (qala.view))
+
+
+;;;
+;;;; View
+;;;
+
+
+(definition public (make-qala-view)
+  (get-guest~ (new-frame IRC-View))))

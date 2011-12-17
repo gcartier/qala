@@ -1,0 +1,528 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala View
+;;;
+
+
+(module qala.view jazz
+
+
+(import (jazz.graphic)
+        (jazz.jml)
+        (jazz.library)
+        (jazz.locale)
+        (jazz.system)
+        (jazz.ui)
+        (jazz.ui.view)
+        (jazz.ui.window)
+        (irregex)
+        (qala.settings)
+        (qala.irc))
+
+
+;;;
+;;;; IRC-View
+;;;
+
+
+(class IRC-View extends Layout-View
+  
+  
+  (method meta override (host-icon)
+    {Image-Resource "Pad"})
+  
+  (method meta override (host-title)
+    "IRC")
+  
+  (method meta override (host-size)
+    {Dimension 800 500})
+  
+  
+  (slot client   initialize #f)
+  (slot channel  initialize #f)
+  (slot channels initialize '())
+  (slot thread   initialize #f)
+  
+  
+  (form
+    (<install>                                           layout-type: border
+      (<Layout-View>                    name: toolbar    size: {Dimension 300 33} location: north layout-type: flow layout-insets: {Rect 0 6 0 0}
+        (<Action-Icon>                                   tooltip-text: "Quit Server" resource: {Image-Resource "Empty"} action-handler: {Event-Handler :form on-quit})
+        (<Toggle-Tool>                                   size: {Dimension 22 22} location: tail tooltip?: #t tooltip-text: "Debug" resource: {Image-Resource "Debugger"} portfolio: :images action-handler: {Event-Handler :form on-debug}))
+      (<Border-View>                                     location: center border-type: edge style: entry
+        (<Splitter-View>                                 style: document orientation: horz mode: absolute division: -200
+          (<Scroller-View>                               location: first position: {Point 46 0} size: {Dimension 300 19} style: document hscroll?: #f vscroll?: #t
+            (<!>                        name: content    layout-type: fill
+              (<IRC-Text-View>          name: text)))
+          (<Splitter-View>                               style: document location: second orientation: vert mode: absolute division: 100
+            (<Scroller-View>                             location: first style: document hscroll?: #t vscroll?: #t
+              (<!>                      name: content    layout-type: fill
+                (<IRC-Channels-View>    name: channels   multiple-selection?: #t portfolio: :images selection-handler: {Selection-Handler :form on-channel}
+                  (<Tree-Node-Column>                    title: "Channel" display-images?: #f toplevel-controls?: #f width: 419))))
+            (<Scroller-View>                             location: second style: document hscroll?: #t vscroll?: #t
+              (<!>                      name: content    layout-type: fill
+                (<IRC-Members-View>     name: members     multiple-selection?: #t portfolio: :images
+                  (<Tree-Node-Column>                    title: "Member" display-images?: #f toplevel-controls?: #f width: 419)))))))
+      (<IRC-Command-Shell>              name: shell      size: {Dimension 300 15} location: south)))
+  
+  
+  ;;;
+  ;;;; Access
+  ;;;
+  
+  
+  (method public (locate-text)
+    (locate 'text))
+  
+  
+  (method public (locate-channels)
+    (locate 'channels))
+  
+  
+  (method public (locate-members)
+    (locate 'members))
+  
+  
+  ;;;
+  ;;;; Focus
+  ;;;
+  
+  
+  (method override (focus-default)
+    (acquire-focus~ (get-text~ (locate 'shell))))
+  
+  
+  ;;;
+  ;;;; Events
+  ;;;
+  
+  
+  (method (on-quit evt)
+    (quit-command~ client))
+  
+  
+  (method (on-channel evt)
+    (let ((channel (get-single-selected-data~ (locate-channels))))
+      (select-channel channel)))
+  
+  
+  (method (on-debug evt)
+    (set-debug?~ client (get-selected?~ (get-sender~ evt))))
+  
+  
+  ;;;
+  ;;;; Callbacks
+  ;;;
+  
+  
+  (method (notice-callback message)
+    (insert message))
+  
+  
+  (method (join-callback nickname user channel-name)
+    (insert (format "*** {a} joined {a}" nickname channel-name) 'Command)
+    (when (equal? nickname (get-nick~ client))
+      (join-channel channel-name)))
+  
+  
+  (method (part-callback nickname user channel-name)
+    (insert (format "*** {a} left {a}" nickname channel-name) 'Command)
+    (when (equal? nickname (get-nick~ client))
+      (part-channel channel-name)))
+  
+  
+  (method (quit-callback nickname user)
+    (insert (format "*** {a} quit" nickname) 'Command)
+    (when (equal? nickname (get-nick~ client))
+      (post-event
+        (lambda ()
+          (disconnect)))))
+  
+  
+  (method (topic-callback channel-name topic)
+    (let ((channel (find-channel channel-name)))
+      (when channel
+        (set-topic~ channel topic)
+        (topic-update channel))))
+  
+  
+  (method (topic-owner-callback channel-name owner)
+    (let ((channel (find-channel channel-name)))
+      (when channel
+        (set-topic-owner~ channel owner)
+        (topic-owner-update channel))))
+  
+  
+  (method (names-callback channel-name member-names)
+    (let ((channel (find-channel channel-name)))
+      (when channel
+        (let ((actual-members
+                (if (get-members-receiving?~ channel)
+                    (get-members~ channel)
+                  (set-members-receiving?~ channel #t)
+                  '())))
+          (set-members~ channel (append actual-members member-names))))))
+  
+  
+  (method (names-end-callback channel-name)
+    (let ((channel (find-channel channel-name)))
+      (when channel
+        (set-members-receiving?~ channel #f)
+        (members-update channel))))
+  
+  
+  (method (privmsg-callback nickname destination message)
+    (let ((style (cond ((equal? nickname (get-nick~ client)) 'Self)
+                       (((qala-highlight?) message) 'Highlight)
+                       (else 'Message))))
+      (match-regexp message
+        (("\1ACTION (.*)\1" message)
+         (insert (format "[{a}] * {a} {a}" destination nickname message) style))
+        (else
+         (insert (format "[{a}] <{a}> {a}" destination nickname message) style)))
+      (when (or ((qala-follow?) destination) (eq? style 'Highlight))
+        (execute-event
+          (lambda ()
+            (select-foreground~ (get-toplevel)))))))
+  
+  
+  (method (mark-callback)
+    (insert (make-string 100 #\-) 'Mark))
+  
+  
+  (method (clear-callback)
+    (execute-event
+      (lambda ()
+        (clear-all~ (locate-text)))))
+  
+  
+  (method (numeric-callback nickname messages)
+    (insert (format "*** {l detail: :human}" messages)))
+  
+  
+  (method (default-callback prefix command parameters)
+    (insert (format "*** {a} {l detail: :human}" command parameters)))
+    
+  
+  ;;;
+  ;;;; Client
+  ;;;
+  
+  
+  (method (connect)
+    (define (setup-ui)
+      (clear-all~ (locate-text))
+      (remove-every-row~ (locate-channels))
+      (remove-every-row~ (locate-members)))
+    
+    (define (setup-client)
+      (set! client (new IRC-Client view: self)))
+    
+    (define (setup-connection)
+      (insert (format "Connecting to {a}"
+                      (get-server-address~ client)))
+      (connect~ client))
+    
+    (define (setup-thread)
+      (set! thread
+            (thread-start!
+              (new-thread
+                (lambda ()
+                  (let (process)
+                    (when (process-input~ client)
+                      (process))))))))
+    
+    (setup-ui)
+    (setup-client)
+    (setup-connection)
+    (setup-thread)
+    client)
+  
+  
+  (method (disconnect)
+    (thread-interrupt! thread thread-exit)
+    (set! thread #f)
+    (let ((server-address (get-server-address~ client)))
+      (disconnect~ client)
+      (insert (format "Disconnected from {a}" server-address)))
+    (set! client #f)
+    (set! channel #f)
+    (set! channels '())
+    (remove-every-row~ (locate-channels))
+    (remove-every-row~ (locate-members)))
+    
+  
+  ;;;
+  ;;;; Text
+  ;;;
+  
+  
+  (method (insert line (style #f))
+    (define (emphasize text line char)
+      (when (find line char)
+        (let ((emphasis? #f))
+          (for-each (lambda (part)
+                      (if emphasis?
+                          (insert-styled~ text part 'Emphasis)
+                        (insert-string~ text part))
+                      (set! emphasis? (not emphasis?)))
+                    (split-string line char)))
+        #t))
+    
+    (execute-event
+      (lambda ()
+        (let ((text (locate-text)))
+          (let ((end (text-ending~ text)))
+            (set-caret~ text end)
+            (when (/= (get-col~ end) 0)
+              (insert-newline~ text))
+            (if style
+                (insert-styled~ text line style)
+              (or (emphasize text line #\x02)
+                  (emphasize text line #\down-arrow)
+                  (insert-string~ text line))))))))
+    
+  
+  ;;;
+  ;;;; Channels
+  ;;;
+  
+  
+  (method (join-channel channel-name)
+    (let ((channel (register-channel channel-name))
+          (tree (locate-channels)))
+      (add-row~ tree children: (list (new Tree-Node title: channel-name)) user-data: channel)
+      (select-channel channel)
+      (let ((row (user-data-row~ tree channel)))
+        (set-single-selection~ tree (row->line~ tree row)))))
+  
+  
+  (method (part-channel channel-name)
+    (let ((channel (find-channel channel-name)))
+      (if (not channel)
+          (bell)
+        (unregister-channel channel)
+        (let ((tree (locate-channels)))
+          (let ((row (user-data-row~ tree channel)))
+            (when row
+              (remove-row~ tree row)
+              (if (> (get-visible-count~ tree) 0)
+                  (set-single-selection~ tree 0)
+                (select-channel #f))))))))
+  
+  
+  (method (register-channel channel-name)
+    (let ((channel (new IRC-Channel channel-name)))
+      (set! channels (cons channel channels))
+      channel))
+  
+  
+  (method (unregister-channel channel)
+    (set! channels (remove! channel channels)))
+  
+  
+  (method (select-channel channel)
+    (set! channel~self channel)
+    (let ((tree (locate-members)))
+      (remove-every-row~ tree)
+      (when channel
+        (members-update channel)))
+    (name-update channel))
+  
+  
+  (method (name-update channel)
+    (execute-event
+      (lambda ()
+        (set-title~ (get-host) (if (not channel)
+                                   "IRC"
+                                 (present~ channel))))))
+  
+  
+  (method (topic-update channel)
+    (execute-event
+      (lambda ()
+        (set-title~ (get-host) (present~ channel)))))
+  
+  
+  (method (topic-owner-update channel)
+    )
+  
+  
+  (method (members-update channel)
+    (fill-members (get-members~ channel)))
+  
+  
+  (method (find-channel name)
+    (find channels name key: get-name~ test: equal? return: 'item))
+  
+  
+  (method (require-channel name)
+    (or (find-channel name)
+        (error "Unregistered channel: {a}" name)))
+
+  
+  ;;;
+  ;;;; Members
+  ;;;
+  
+  
+  (method (fill-members member-names)
+    (let ((tree (locate-members)))
+      (remove-every-row~ tree)
+      (with-update-locked~ tree
+        (lambda ()
+          (for-each (lambda (member-name)
+                      (add-row~ tree children: (list (new Tree-Node title: member-name)) user-data: member-name))
+                    (sort di<? member-names))))))
+
+  
+  ;;;
+  ;;;; Shell
+  ;;;
+  
+  
+  (method (process-command command)
+    (if (not client)
+        (bell)
+      (let ((channel-name (and channel (get-name~ channel))))
+        (process~ client channel-name command)))))
+
+
+;;;
+;;;; IRC-Channel
+;;;
+
+
+(class IRC-Channel extends Object
+  
+  
+  (slot name               getter generate)
+  (slot topic              initialize #f  accessors generate)
+  (slot topic-owner        initialize #f  accessors generate)
+  (slot members            initialize '() accessors generate)
+  (slot members-receiving? initialize #f  accessors generate)
+  
+  
+  (method override (initialize name)
+    (nextmethod)
+    (set! name~self name))
+  
+  
+  (method override (print output readably)
+    (print-unreadable self output
+      (lambda (output)
+        (format output "{a}" name))))
+  
+  
+  (method (present)
+    (format "{a}{? : {a}~}" name topic)))
+
+
+;;;
+;;;; IRC-Channels-View
+;;;
+
+
+(class IRC-Channels-View extends Tree-View)
+
+
+;;;
+;;;; IRC-Members-View
+;;;
+
+
+(class IRC-Members-View extends Tree-View)
+
+
+;;;
+;;;; IRC-Text-View
+;;;
+
+
+(class IRC-Text-View extends Text-View
+  
+  
+  (form
+    (<install> left-padding: 1 top-padding: 1))
+  
+  
+  (method override (new-model)
+    (new Text-Model wrap?: #t))
+
+  
+  (method override (install rest)
+    (nextmethod rest)
+    (let ((pref (preferences)))
+      (add-style 'Emphasis  {Text-Style Base font: {Font Label-Bold}})
+      (add-style 'Command   {Text-Style Base})
+      (add-style 'Self      {Text-Style Base color: {Color Dark-Blue}})
+      (add-style 'Message   {Text-Style Base color: {Color Dark-Green}})
+      (add-style 'Highlight {Text-Style Base color: {Color Dark-Red}})
+      (add-style 'Mark      {Text-Style Base highlight: {Color Light-Red}}))))
+
+
+;;;
+;;;; IRC-Command-Shell
+;;;
+
+
+(class IRC-Command-Shell extends Command-Shell
+  
+  
+  (method override (form-model form)
+    (case (get-name~ form)
+      ((text) IRC-Command-Text-View)
+      (else (nextmethod form)))))
+
+
+;;;
+;;;; IRC-Command-Text-View
+;;;
+
+
+(class IRC-Command-Text-View extends Command-Text-View
+  
+  
+  (form
+    (<install> left-padding: 1 top-padding: 1))
+  
+  
+  (method override (default-mode)
+    (new IRC-Mode self)))
+
+
+;;;
+;;;; IRC-Mode
+;;;
+
+
+(class IRC-Mode extends Command-Mode
+  
+  
+  (method override (mode-actions)
+    (find-actions 'irc-mode))
+  
+  
+  (method (on-finish evt)
+    (process-command~ (get-guest~ text) (get-string-content~ text))
+    (clear-all~ text))
+  
+  
+  (method (on-cancel evt)
+    (cancel)))
+
+
+;;;
+;;;; IRC-Mode-Actions
+;;;
+
+
+(class IRC-Mode-Actions extends Actions
+  
+  
+  (form
+    (<install>
+      (<Action-Item> name: finish action-handler: {Event-Handler (:focus :mode) on-finish} shortcut: {Shortcut Return})
+      (<Action-Item> name: cancel action-handler: {Event-Handler (:focus :mode) on-cancel} shortcut: {Shortcut :control #\Q} alternate-shortcut: {Shortcut Escape})))))

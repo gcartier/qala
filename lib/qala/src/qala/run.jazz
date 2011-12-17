@@ -1,0 +1,17 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala Run
+;;;
+
+
+(module qala.run jazz
+
+
+(import (qala.application))
+
+
+(register-product-run 'qala
+  (lambda (descriptor)
+    (boot-environment~ (new Qala-Application)))))

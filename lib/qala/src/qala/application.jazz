@@ -1,0 +1,298 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala
+;;;
+
+
+(module qala.application jazz
+
+
+(import (jazz.debuggee)
+        (jazz.editor.lisp)
+        (jazz.editor.jazz)
+        (jazz.io)
+        (jazz.jml)
+        (jazz.library)
+        (jazz.platform)
+        (jazz.system)
+        (jazz.system.application)
+        (jazz.ui)
+        (jazz.ui.view)
+        (jazz.ui.window)
+        (qala.settings)
+        (qala.view))
+
+
+;; TODO
+;; - fix that alt-tab and back clears the shell text
+;; - be able to be operator of #jazzscheme and set topic
+;; - put topic in a better place than title
+;; * Now talking in #gambit
+;; * Topic is 'The Gambit Scheme system -- http://dynamo.iro.umontreal.ca/~gambit/wiki/index.php/Main_Page -- Many of us are only reading up occasionally, so you may need to be patient. Or use the mailing list.'
+;; * Set by pflanze on Sun Mar 01 16:50:29
+;; - fix text resize when wrapped
+;; - c-p c-n command text navigation
+;;   - make the clipboard stack into reusable code
+;; - find an icon for Qala
+;; - find a better name!?
+;; - update members on join, leave, ...
+;; - add a switch to generalize case!?
+;;   (switch command ci=?
+;;     (("foo" "goo") ...)
+;;     (else))
+;; - also add (eswitch x is? ...) = typecase !?
+;; - implement an Identd server (RFC 1413)
+
+
+;;;
+;;;; Application
+;;;
+
+
+(class Qala-Application extends Application
+
+  
+  (method override (process-name)
+    "Qala")
+  
+  
+  (method override (new-toplevel)
+    (new Qala-Toplevel))
+  
+  
+  (method override (initialize-settings)
+    (let ((file {File Home ".qala" ".settings"}))
+      (when (not (exists?~ file))
+        (create~ file))
+      (set! settings (new Settings file: file))))
+  
+  
+  (method override (default-preferences)
+    (new Qala-Preferences))
+  
+  
+  (method override (default-bindings)
+    (new Qala-Bindings))
+  
+  
+  (method override (default-workspaces)
+    (new Qala-Workspaces))
+
+  
+  (method override (conclude-environment)
+    (nextmethod)
+    (load-qalaini)
+    ((qala-prelude)))
+
+  
+  ;;;
+  ;;;; Ini
+  ;;;
+  
+  
+  (method (load-qalaini)
+    (let ((file {File Home ".qala" "qalaini.jazz"}))
+      (when (exists?~ file)
+        (load-script (parse~ file)))))
+
+  
+  ;;;
+  ;;;; Frames
+  ;;;
+
+
+  (method override (default-frame-class)
+    IRC-View)
+
+  
+  ;;;
+  ;;;; Events
+  ;;;
+  
+  
+  (method (on-test evt)
+    (explore-views~ (jazz.debuggee:current-view-debugger)))
+  
+  
+  (method (on-reload-ini evt)
+    (with-cursor :wait
+      (lambda ()
+        (load-qalaini)))
+    (user-message "qalaini reloaded")))
+
+
+;;;
+;;;; Preferences
+;;;
+
+
+(class Qala-Preferences extends Application-Preferences
+  
+  
+  (form
+    (<install>                                         toolbar-classes: ((:menubar . {Reference Qala-Menubar}) (:toolbar . {Reference Qala-Toolbar}) (:status . {Reference Qala-Status}))
+      (<documents~>
+        (<Command-Text-Preferences> name: command-text)
+        (<Jazz-Text-Preferences>    name: jazz-text)
+        (<Plain-Text-Preferences>   name: plain-text)))))
+
+
+;;;
+;;;; Bindings
+;;;
+
+
+(class Qala-Bindings extends Application-Bindings
+  
+  
+  (form
+    (<install>
+      (<Qala-Actions>           name: qala)
+      (<Code-Text-Actions>      name: code-text)
+      (<Lisp-Text-Actions>      name: lisp-text)
+      (<Jazz-Text-Actions>      name: jazz-text)
+      (<Search-Mode-Actions>    name: search-mode)
+      (<Highlight-Mode-Actions> name: highlight-mode)
+      (<Extended-Mode-Actions>  name: extended-mode)
+      (<Execute-Mode-Actions>   name: execute-mode)
+      (<Find-Mode-Actions>      name: find-mode)
+      (<Find-Mode-Actions>      name: irc-mode))))
+
+
+;;;
+;;;; Actions
+;;;
+
+
+(class Qala-Actions extends Actions
+  
+  
+  (form
+    (<install>
+      (<Action-Item> name: test action-handler: {Event-Handler :application on-test} shortcut: {Shortcut :control #\T})
+      (<Action-Item> name: reload-ini action-handler: {Event-Handler :application on-reload-ini}))))
+
+
+;;;
+;;;; Workspaces
+;;;
+
+
+(class Qala-Workspaces extends Workspaces-Preferences
+  
+  
+  (form
+    (<install>                          active: home
+      (<Qala-Workspace> name: home))))
+
+
+;;;
+;;;; Workspace
+;;;
+
+
+(class Qala-Workspace extends Workspace-Preferences
+  
+  
+  (form
+    (<install>                                      title: "Home" icon: {Image-Resource "WorkspaceHome"}
+      (<Menubar-Preferences>          name: menubar location: root
+        (<Mainbar-Preferences>        name: toolbar location: second
+          (<Status-Preferences>       name: status  location: second
+            (<Stage-Preferences>      name: top     location: first)))))))
+
+
+;;;
+;;;; Toplevel
+;;;
+
+
+(class Qala-Toplevel extends Toplevel
+
+
+  (form
+    (<install> caption-base: "Qala" size: {Dimension 1000 600})))
+
+
+;;;
+;;;; Menubar
+;;;
+
+
+(class Qala-Menubar extends Menubar
+  
+  
+  (method override (install rest)
+    (nextmethod rest)
+    (with-update-locked
+      (lambda ()
+        (new Label-Item parent: self name: 'file   content: (new File-Base-Menu))
+        (new Label-Item parent: self name: 'edit   content: (new Edit-Base-Menu))
+        (new Label-Item parent: self name: 'qala   content: (new Qala-Menu))
+        (new Label-Item parent: self name: 'window content: (new Window-Menu))
+        (new Label-Item parent: self name: 'help   content: (new Help-Menu))))))
+
+
+;;;
+;;;; Qala-Menu
+;;;
+
+
+(class Qala-Menu extends Menu
+  
+  
+  (form
+    (<install>          title: "Qala"
+      (<Label-Item>     title: "Test" icon: {Image-Resource "Execute"} action-handler: {Action qala test})
+      (<Separator-Item>)
+      (<Label-Item>     title: "Reload qalaini" icon: {Image-Resource "Refresh"} action-handler: {Action qala reload-ini}))))
+
+
+;;;
+;;;; Help-Menu
+;;;
+
+
+(class Help-Menu extends Menu
+  
+  
+  (form
+    (<install>          title: "Help"
+      (<Label-Item>     title: "About Qala..." icon: {Image-Resource "About"} action-handler: {Action application about}))))
+
+
+;;;
+;;;; Toolbar
+;;;
+
+
+(class Qala-Toolbar extends Toolbar
+
+
+  (form
+    (<install>
+      (<Action-Icon> name: new   tooltip-text: "New" resource: {Image-Resource "New"} action-handler: {Action application new})
+      (<Action-Icon> name: open  tooltip-text: "Open" resource: {Image-Resource "Open"} action-handler: {Action application open})
+      (<Action-Icon> name: save  tooltip-text: "Save" resource: {Image-Resource "Save"} action-handler: {Action guest save})
+      (<Separator>)
+      (<Action-Icon> name: cut   tooltip-text: "Cut" resource: {Image-Resource "Cut"} action-handler: {Action view cut})
+      (<Action-Icon> name: copy  tooltip-text: "Copy" resource: {Image-Resource "Copy"} action-handler: {Action view copy})
+      (<Action-Icon> name: paste tooltip-text: "Paste" resource: {Image-Resource "Paste"} action-handler: {Action view paste})
+      (<Separator>)
+      (<Action-Icon> name: undo  tooltip-text: "Undo" resource: {Image-Resource "Undo"} action-handler: {Action view undo})
+      (<Action-Icon> name: redo  tooltip-text: "Redo" resource: {Image-Resource "Redo"} action-handler: {Action view redo}))))
+
+
+;;;
+;;;; Status
+;;;
+
+
+(class Qala-Status extends Status-Toolbar
+
+
+  (form
+    (<install>
+      (<Status-Label> name: message size: {Dimension 782 20} location: center)))))

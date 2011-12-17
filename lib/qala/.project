@@ -1,0 +1,25 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Project
+;;;
+
+
+(data jazz.ide.data.project
+
+
+(import (jazz.editor.jazz))
+
+
+(form
+  (<Project>               name: qala
+    (<*>                                     tag-reference: {File :context "qala.project"})
+    (<Project-Directory>                     directory: {Directory :context "src"}
+      (<Project-Directory>                   directory: {Directory :context "src" "qala"}
+        (<Jazz-File>       name: application source: {File :context "src" "qala" "application.jazz"})
+        (<Jazz-File>       name: ini         source: {File :context "src" "qala" "ini.jazz"})
+        (<Jazz-File>       name: irc         source: {File :context "src" "qala" "irc.jazz"})
+        (<Jazz-File>       name: run         source: {File :context "src" "qala" "run.jazz"})
+        (<Jazz-File>       name: settings    source: {File :context "src" "qala" "settings.jazz"})
+        (<Jazz-File>       name: view        source: {File :context "src" "qala" "view.jazz"}))))))

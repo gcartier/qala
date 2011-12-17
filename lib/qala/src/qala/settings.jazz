@@ -1,0 +1,31 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala Settings
+;;;
+
+
+(module qala.settings jazz
+
+
+(import (jazz.library))
+
+
+(define-setting qala-debug?
+  #f)
+
+
+(define-setting qala-prelude
+  (lambda ()
+    #f))
+
+
+(define-setting qala-follow?
+  (lambda (channel-name)
+    #f))
+
+
+(define-setting qala-highlight?
+  (lambda (message)
+    #f)))
