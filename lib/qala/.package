@@ -9,7 +9,7 @@
                                qala.settings
                                qala.view
                                qala.run)
-                       (build (qala))
+                       (build (qala resources: "resources"))
                        (dependencies jazz
                                      jazz.debuggee
                                      jazz.designer
