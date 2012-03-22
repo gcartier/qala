@@ -100,7 +100,9 @@
   
   
   (method (on-quit evt)
-    (quit-command~ client))
+    (if (not client)
+        (bell)
+      (quit-command~ client)))
   
   
   (method (on-channel evt)
@@ -109,7 +111,9 @@
   
   
   (method (on-debug evt)
-    (set-debug?~ client (get-selected?~ (get-sender~ evt))))
+    (if (not client)
+        (bell)
+      (set-debug?~ client (get-selected?~ (get-sender~ evt)))))
   
   
   ;;;
@@ -230,6 +234,7 @@
             (thread-start!
               (new-thread
                 (lambda ()
+                  (declare (proper-tail-calls))
                   (let (process)
                     (when (process-input~ client)
                       (process))))))))
