@@ -122,9 +122,15 @@
   (method (on-reload-ini evt)
     (with-cursor :wait
       (lambda ()
-        (load-qalaini)
+        (load-qalaini)))
+    (user-message "qalaini reloaded"))
+  
+  
+  (method (on-execute-prelude evt)
+    (with-cursor :wait
+      (lambda ()
         ((qala-prelude))))
-    (user-message "qalaini reloaded")))
+    (user-message "prelude executed")))
 
 
 ;;;
@@ -176,7 +182,8 @@
   (form
     (<install>
       (<Action-Item> name: test action-handler: {Event-Handler :application on-test} shortcut: {Shortcut :control #\T})
-      (<Action-Item> name: reload-ini action-handler: {Event-Handler :application on-reload-ini}))))
+      (<Action-Item> name: reload-ini action-handler: {Event-Handler :application on-reload-ini})
+      (<Action-Item> name: execute-prelude action-handler: {Event-Handler :application on-execute-prelude}))))
 
 
 ;;;
@@ -251,7 +258,8 @@
     (<install>          title: "Qala"
       (<Label-Item>     title: "Test" icon: {Image-Resource "Execute"} action-handler: {Action qala test})
       (<Separator-Item>)
-      (<Label-Item>     title: "Reload qalaini" icon: {Image-Resource "Refresh"} action-handler: {Action qala reload-ini}))))
+      (<Label-Item>     title: "Reload qalaini" icon: {Image-Resource "Refresh"} action-handler: {Action qala reload-ini})
+      (<Label-Item>     title: "Reexecute prelude" icon: {Image-Resource "Link"} action-handler: {Action qala execute-prelude}))))
 
 
 ;;;

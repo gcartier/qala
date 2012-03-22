@@ -68,6 +68,11 @@
       (<IRC-Command-Shell>              name: shell      size: {Dimension 300 15} location: south)))
   
   
+  (method override (destroy)
+    (disconnect closing?: #t)
+    (nextmethod))
+  
+  
   ;;;
   ;;;; Access
   ;;;
@@ -246,17 +251,19 @@
     client)
   
   
-  (method (disconnect)
+  (method (disconnect (closing?: closing? #f))
     (thread-interrupt! thread thread-exit)
     (set! thread #f)
     (let ((server-address (get-server-address~ client)))
       (disconnect~ client)
-      (insert (format "Disconnected from {a}" server-address)))
+      (unless closing?
+        (insert (format "Disconnected from {a}" server-address))))
     (set! client #f)
     (set! channel #f)
     (set! channels '())
-    (remove-every-row~ (locate-channels))
-    (remove-every-row~ (locate-members)))
+    (unless closing?
+      (remove-every-row~ (locate-channels))
+      (remove-every-row~ (locate-members))))
     
   
   ;;;
