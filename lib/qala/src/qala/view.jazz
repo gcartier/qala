@@ -40,16 +40,22 @@
     {Dimension 800 500})
   
   
-  (slot client   initialize #f)
-  (slot channel  initialize #f)
-  (slot channels initialize '())
-  (slot thread   initialize #f)
+  (slot client   initialize #f  getter generate)
+  (slot channel  initialize #f  getter generate)
+  (slot channels initialize '() getter generate)
+  (slot thread   initialize #f  getter generate)
+  
+  
+  (slot follow?    initialize (qala-follow?)    accessors generate)
+  (slot highlight? initialize (qala-highlight?) accessors generate)
   
   
   (form
     (<install>                                           layout-type: border
       (<Layout-View>                    name: toolbar    size: {Dimension 300 33} location: north layout-type: flow layout-insets: {Rect 0 6 0 0}
         (<Action-Icon>                                   tooltip-text: "Quit Server" resource: {Image-Resource "Empty"} action-handler: {Event-Handler :form on-quit})
+        (<Separator>)
+        (<Action-Icon>                                   tooltip-text: "Reconnect Server" resource: {Image-Resource "Link"} action-handler: {Event-Handler :form on-reconnect})
         (<Toggle-Tool>                                   size: {Dimension 22 22} location: tail tooltip?: #t tooltip-text: "Debug" resource: {Image-Resource "Debugger"} portfolio: :images action-handler: {Event-Handler :form on-debug}))
       (<Border-View>                                     location: center border-type: edge style: entry
         (<Splitter-View>                                 style: document orientation: horz mode: absolute division: -200
@@ -108,6 +114,12 @@
     (if (not client)
         (bell)
       (quit-command~ client)))
+  
+  
+  (method (on-reconnect evt)
+    (if (not client)
+        (bell)
+      (reconnect)))
   
   
   (method (on-channel evt)
@@ -184,14 +196,14 @@
   
   (method (privmsg-callback nickname destination message)
     (let ((style (cond ((equal? nickname (get-nick~ client)) 'Self)
-                       (((qala-highlight?) message) 'Highlight)
+                       ((highlight? message) 'Highlight)
                        (else 'Message))))
       (match-regexp message
         (("\1ACTION (.*)\1" message)
          (insert (format "[{a}] * {a} {a}" destination nickname message) style))
         (else
          (insert (format "[{a}] <{a}> {a}" destination nickname message) style)))
-      (when (or ((qala-follow?) destination) (eq? style 'Highlight))
+      (when (or (follow? destination) (eq? style 'Highlight))
         (execute-event
           (lambda ()
             (select-foreground~ (get-toplevel)))))))
@@ -252,18 +264,25 @@
   
   
   (method (disconnect (closing?: closing? #f))
-    (thread-interrupt! thread thread-exit)
-    (set! thread #f)
-    (let ((server-address (get-server-address~ client)))
-      (disconnect~ client)
-      (unless closing?
-        (insert (format "Disconnected from {a}" server-address))))
-    (set! client #f)
+    (when thread
+      (thread-interrupt! thread thread-exit)
+      (set! thread #f))
+    (when client
+      (let ((server-address (get-server-address~ client)))
+        (disconnect~ client)
+        (unless closing?
+          (insert (format "Disconnected from {a}" server-address)))))
     (set! channel #f)
     (set! channels '())
     (unless closing?
       (remove-every-row~ (locate-channels))
       (remove-every-row~ (locate-members))))
+  
+  
+  (method (reconnect)
+    (disconnect)
+    (connect)
+    ((qala-connect) client))
     
   
   ;;;

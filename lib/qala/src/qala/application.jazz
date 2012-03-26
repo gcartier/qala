@@ -19,14 +19,24 @@
         (jazz.system)
         (jazz.system.application)
         (jazz.ui)
+        (jazz.ui.dialog)
         (jazz.ui.view)
         (jazz.ui.window)
         (qala.settings)
+        (qala.text)
         (qala.view))
 
 
 ;; TODO
 ;; - fix disconnects crashing instead of reconnecting automatically
+;;   ------------- REPL is now in #<thread #83> -------------
+;;   *** ERROR IN ##read-line -- An existing connection was forcibly closed by the remote host.
+;;   (read-char '#<input-output-port #84 (tcp-client "irc.freenode.org" 6667)>)
+;;   > ,b
+;;   0  ##read-line
+;;   1  qala.irc:IRC-Client:process-input
+;;   2  qala.view:IRC-View:connect
+;;   3  ##thread-start-action!
 ;; - find a way to visually mark that all messages where read when application is activated
 ;;   (what is now a poor man sending a ******************** message to self)
 ;; - fix that alt-tab and back clears the shell text
@@ -86,8 +96,7 @@
   
   (method override (conclude-environment)
     (nextmethod)
-    (load-qalaini)
-    ((qala-prelude)))
+    (load-qalaini))
 
   
   ;;;
@@ -95,10 +104,13 @@
   ;;;
   
   
+  (definition qalaini
+    {File Home ".qala" ".qalaini"})
+  
+  
   (method (load-qalaini)
-    (let ((file {File Home ".qala" "qalaini.jazz"}))
-      (when (exists?~ file)
-        (load-script (parse~ file)))))
+    (when (exists?~ qalaini)
+      (load-script (parse~ qalaini))))
 
   
   ;;;
@@ -109,21 +121,43 @@
   (method override (default-frame-class)
     IRC-View)
 
+
+  (method override (known-extension-frame-class ext)
+    (cond ((member? ext '("qalaini") test: extension=?) Qala-Text-View)
+          (else (nextmethod ext))))
+
   
   ;;;
   ;;;; Events
   ;;;
   
   
+  (definition (choose-qalaini)
+    (choose-file extensions: '(("Qala Ini" . "qalaini"))))
+  
+  
   (method (on-test evt)
     (explore-views~ (jazz.debuggee:current-view-debugger)))
   
   
-  (method (on-reload-ini evt)
+  (method (on-edit-ini evt)
+    (let ((file (choose-qalaini)))
+      (edit-document file)))
+  
+  
+  (method (on-load-ini evt)
+    (let ((file (choose-qalaini)))
+      (with-cursor :wait
+        (lambda ()
+          (load-script (parse~ file))))))
+  
+  
+  (method (on-execute-connect evt)
     (with-cursor :wait
       (lambda ()
-        (load-qalaini)))
-    (user-message "qalaini reloaded"))
+        (let ((client (get-client~ (current-guest))))
+          ((qala-connect) client))))
+    (user-message "connect executed"))
   
   
   (method (on-execute-prelude evt)
@@ -181,8 +215,10 @@
   
   (form
     (<install>
-      (<Action-Item> name: test action-handler: {Event-Handler :application on-test} shortcut: {Shortcut :control #\T})
-      (<Action-Item> name: reload-ini action-handler: {Event-Handler :application on-reload-ini})
+      (<Action-Item> name: test            action-handler: {Event-Handler :application on-test} shortcut: {Shortcut :control #\T})
+      (<Action-Item> name: edit-ini        action-handler: {Event-Handler :application on-edit-ini})
+      (<Action-Item> name: load-ini        action-handler: {Event-Handler :application on-load-ini})
+      (<Action-Item> name: execute-connect action-handler: {Event-Handler :application on-execute-connect})
       (<Action-Item> name: execute-prelude action-handler: {Event-Handler :application on-execute-prelude}))))
 
 
@@ -239,11 +275,25 @@
     (nextmethod rest)
     (with-update-locked
       (lambda ()
-        (new Label-Item parent: self name: 'file   content: (new File-Base-Menu))
+        (new Label-Item parent: self name: 'file   content: (new Qala-File-Menu))
         (new Label-Item parent: self name: 'edit   content: (new Edit-Base-Menu))
         (new Label-Item parent: self name: 'qala   content: (new Qala-Menu))
         (new Label-Item parent: self name: 'window content: (new Window-Menu))
         (new Label-Item parent: self name: 'help   content: (new Help-Menu))))))
+
+
+;;;
+;;;; Qala-File-Menu
+;;;
+
+
+(class Qala-File-Menu extends File-Base-Menu
+  
+  
+  (form
+    (<install>
+      (<!> name: on-revert-saved  visible?: #f)
+      (<!> name: end-revert-group visible?: #f))))
 
 
 ;;;
@@ -258,8 +308,8 @@
     (<install>          title: "Qala"
       (<Label-Item>     title: "Test" icon: {Image-Resource "Execute"} action-handler: {Action qala test})
       (<Separator-Item>)
-      (<Label-Item>     title: "Reload qalaini" icon: {Image-Resource "Refresh"} action-handler: {Action qala reload-ini})
-      (<Label-Item>     title: "Reexecute prelude" icon: {Image-Resource "Link"} action-handler: {Action qala execute-prelude}))))
+      (<Label-Item>     title: "Edit qalaini" icon: {Image-Resource "WorkspaceText"} action-handler: {Action qala edit-ini})
+      (<Label-Item>     title: "Load qalaini" icon: {Image-Resource "Link"} action-handler: {Action qala load-ini}))))
 
 
 ;;;

@@ -32,9 +32,11 @@
   (slot port-number    getter generate)
   
   
-  (slot nick   initialize #f accessors generate)
-  (slot view   initialize #f)
-  (slot port   initialize #f)
+  (slot nick initialize #f accessors generate)
+  (slot view initialize #f getter generate)
+  (slot port initialize #f getter generate)
+  
+  
   (slot debug? initialize (qala-debug?) accessors generate)
   
   
@@ -55,8 +57,9 @@
   
   
   (method public (disconnect)
-    (close-port port)
-    (set! port #f))
+    (when port
+      (close-port port)
+      (set! port #f)))
   
   
   ;;;
@@ -65,8 +68,15 @@
   
   
   (method public (process-input)
-    (let ((line (read-line port)))
-      (unless (eof-object? line)
+    (let ((line (with-exception-filter
+                  (lambda (exception)
+                    #t)
+                  (lambda (exception)
+                    (insert~ view "*** disconnected" 'Command)
+                    #f)
+                  (lambda ()
+                    (read-line port)))))
+      (unless (or (not line) (eof-object? line))
         (process-line line)
         #t)))
   
