@@ -275,25 +275,11 @@
     (nextmethod rest)
     (with-update-locked
       (lambda ()
-        (new Label-Item parent: self name: 'file   content: (new Qala-File-Menu))
+        (new Label-Item parent: self name: 'file   content: (new File-Base-Menu))
         (new Label-Item parent: self name: 'edit   content: (new Edit-Base-Menu))
         (new Label-Item parent: self name: 'qala   content: (new Qala-Menu))
         (new Label-Item parent: self name: 'window content: (new Window-Menu))
         (new Label-Item parent: self name: 'help   content: (new Help-Menu))))))
-
-
-;;;
-;;;; Qala-File-Menu
-;;;
-
-
-(class Qala-File-Menu extends File-Base-Menu
-  
-  
-  (form
-    (<install>
-      (<!> name: on-revert-saved  visible?: #f)
-      (<!> name: end-revert-group visible?: #f))))
 
 
 ;;;
