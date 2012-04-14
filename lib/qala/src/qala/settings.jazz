@@ -16,16 +16,21 @@
   #f)
 
 
-(define-setting qala-prelude
-  (lambda ()
-    #f))
-
-
 (define-setting qala-follow?
   (lambda (channel-name)
     #f))
 
 
 (define-setting qala-highlight?
+  (lambda (channel-name)
+    #f))
+
+
+(define-setting qala-connect
   (lambda (message)
+    #f))
+
+
+(define-setting qala-prelude
+  (lambda ()
     #f)))

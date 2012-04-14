@@ -1,0 +1,23 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala Text
+;;;
+
+
+(module qala.text jazz
+
+
+(import (jazz.editor.jazz)
+        (jazz.graphic)
+        (jazz.jml)
+        (jazz.library)
+        (jazz.locale)
+        (jazz.system)
+        (jazz.ui)
+        (jazz.ui.view)
+        (jazz.ui.window))
+
+
+(class Qala-Text-View extends Jazz-Text-View))
