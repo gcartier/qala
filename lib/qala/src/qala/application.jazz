@@ -22,6 +22,7 @@
         (jazz.ui.dialog)
         (jazz.ui.view)
         (jazz.ui.window)
+        (jazz.version)
         (qala.settings)
         (qala.text)
         (qala.view))
@@ -79,7 +80,7 @@
     (let ((file {File Home ".qala" ".settings"}))
       (when (not (exists?~ file))
         (create~ file))
-      (set! settings (new Settings file: file))))
+      (set! settings (new File-Settings file: file))))
   
   
   (method override (default-preferences)
