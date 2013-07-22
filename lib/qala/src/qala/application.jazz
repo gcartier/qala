@@ -261,7 +261,11 @@
 
 
   (form
-    (<install> caption-base: "Qala" size: {Dimension 1000 600})))
+    (<install> caption-base: "Qala" size: {Dimension 1000 600}))
+  
+  
+  (method override (close-window)
+    (minimize)))
 
 
 ;;;
