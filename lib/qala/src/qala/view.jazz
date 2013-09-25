@@ -552,7 +552,11 @@
   
   
   (method override (default-mode)
-    (new IRC-Mode self)))
+    (new IRC-Mode self))
+  
+  
+  (method override (focus-empty)
+    ))
 
 
 ;;;

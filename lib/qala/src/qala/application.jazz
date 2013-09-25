@@ -40,7 +40,6 @@
 ;;   3  ##thread-start-action!
 ;; - find a way to visually mark that all messages where read when application is activated
 ;;   (what is now a poor man sending a ******************** message to self)
-;; - fix that alt-tab and back clears the shell text
 ;; - be able to be operator of #jazzscheme and set topic
 ;; - put topic in a better place than title
 ;; * Now talking in #gambit
