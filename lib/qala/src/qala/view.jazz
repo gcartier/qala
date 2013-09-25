@@ -144,22 +144,28 @@
   
   (method (join-callback nickname user channel-name)
     (insert (format "*** {a} joined {a}" nickname channel-name) 'Command)
-    (when (equal? nickname (get-nick~ client))
-      (join-channel channel-name)))
+    (if (equal? nickname (get-nick~ client))
+        (join-channel channel-name)
+      (channel-add channel-name nickname)))
   
   
   (method (part-callback nickname user channel-name)
     (insert (format "*** {a} left {a}" nickname channel-name) 'Command)
-    (when (equal? nickname (get-nick~ client))
-      (part-channel channel-name)))
+    (if (equal? nickname (get-nick~ client))
+        (part-channel channel-name)
+      (channel-remove channel-name nickname)))
   
   
   (method (quit-callback nickname user)
     (insert (format "*** {a} quit" nickname) 'Command)
-    (when (equal? nickname (get-nick~ client))
-      (post-event
-        (lambda ()
-          (disconnect)))))
+    (if (equal? nickname (get-nick~ client))
+        (post-event
+          (lambda ()
+            (disconnect)))
+      (for-each (lambda (channel)
+                  (let ((channel-name (get-name~ channel)))
+                    (channel-remove channel-name nickname)))
+                channels)))
   
   
   (method (topic-callback channel-name topic)
@@ -344,6 +350,26 @@
                 (select-channel #f))))))))
   
   
+  (method (channel-add channel-name member-name)
+    (let ((chan (find-channel channel-name)))
+      (when chan
+        (set-members~ chan (append (get-members~ chan) (list member-name)))
+        (when (eq? chan channel)
+          (let ((tree (locate-members)))
+            (add-row~ tree children: (list (new Tree-Node title: member-name)) user-data: member-name))))))
+  
+  
+  (method (channel-remove channel-name member-name)
+    (let ((chan (find-channel channel-name)))
+      (when chan
+        (set-members~ chan (remove! member-name (get-members~ chan) test: equal?))
+        (when (eq? chan channel)
+          (let ((tree (locate-members)))
+            (let ((row (user-data-row~ tree member-name test: equal?)))
+              (when row
+                (remove-row~ tree row))))))))
+  
+  
   (method (register-channel channel-name)
     (let ((channel (new IRC-Channel channel-name)))
       (set! channels (cons channel channels))
@@ -352,6 +378,15 @@
   
   (method (unregister-channel channel)
     (set! channels (remove! channel channels)))
+  
+  
+  (method (find-channel name)
+    (find channels name key: get-name~ test: equal? return: 'item))
+  
+  
+  (method (require-channel name)
+    (or (find-channel name)
+        (error "Unregistered channel: {a}" name)))
   
   
   (method (select-channel channel)
@@ -383,15 +418,6 @@
   
   (method (members-update channel)
     (fill-members (get-members~ channel)))
-  
-  
-  (method (find-channel name)
-    (find channels name key: get-name~ test: equal? return: 'item))
-  
-  
-  (method (require-channel name)
-    (or (find-channel name)
-        (error "Unregistered channel: {a}" name)))
 
   
   ;;;
@@ -404,8 +430,13 @@
       (remove-every-row~ tree)
       (with-update-locked~ tree
         (lambda ()
+          (define (standardize-name name)
+            (if (starts-with? name "@")
+                (tail name 1)
+              name))
+                
           (for-each (lambda (member-name)
-                      (add-row~ tree children: (list (new Tree-Node title: member-name)) user-data: member-name))
+                      (add-row~ tree children: (list (new Tree-Node title: member-name)) user-data: (standardize-name member-name)))
                     (sort di<? member-names))))))
 
   

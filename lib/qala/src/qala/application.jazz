@@ -51,7 +51,6 @@
 ;;   - make the clipboard stack into reusable code
 ;; - find an icon for Qala
 ;; - find a better name!?
-;; - update members on join, leave, ...
 ;; - add a switch to generalize case!?
 ;;   (switch command ci=?
 ;;     (("foo" "goo") ...)
