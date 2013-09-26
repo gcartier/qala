@@ -212,7 +212,7 @@
       (when (or (follow? destination) (eq? style 'Highlight))
         (execute-event
           (lambda ()
-            (select-foreground~ (get-toplevel)))))))
+            (flash-window~ (get-toplevel)))))))
   
   
   (method (mark-callback)
