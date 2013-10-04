@@ -96,6 +96,10 @@
     (locate 'members))
   
   
+  (method public (locate-shell)
+    (locate 'shell))
+  
+  
   ;;;
   ;;;; Focus
   ;;;
@@ -403,7 +407,11 @@
       (lambda ()
         (set-title~ (get-host) (if (not channel)
                                    "IRC"
-                                 (present~ channel))))))
+                                 (present~ channel)))
+        (let ((text (get-text~ (locate-shell))))
+          (clear-all~ text)
+          (when channel
+            (insert-styled~ text (format "{a}:" (get-name~ channel)) 'Separator))))))
   
   
   (method (topic-update channel)
@@ -434,7 +442,7 @@
             (if (starts-with? name "@")
                 (tail name 1)
               name))
-                
+          
           (for-each (lambda (member-name)
                       (add-row~ tree children: (list (new Tree-Node title: member-name)) user-data: (standardize-name member-name)))
                     (sort di<? member-names))))))
@@ -555,6 +563,10 @@
     (new IRC-Mode self))
   
   
+  (method override (focus-select-all)
+    (set-selection (field-range (last-field))))
+  
+  
   (method override (focus-empty)
     ))
 
@@ -572,7 +584,7 @@
   
   
   (method (on-finish evt)
-    (process-command~ (get-guest~ text) (get-string-content~ text))
+    (process-command~ (get-guest~ text) (last-content~ text))
     (clear-all~ text))
   
   
