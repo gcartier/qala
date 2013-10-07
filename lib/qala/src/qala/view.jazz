@@ -213,10 +213,12 @@
          (insert (format "[{a}] * {a} {a}" destination nickname message) style))
         (else
          (insert (format "[{a}] <{a}> {a}" destination nickname message) style)))
-      (when (or (follow? destination) (eq? style 'Highlight))
-        (execute-event
-          (lambda ()
-            (flash-window~ (get-toplevel)))))))
+      (unless (equal? nickname (get-nick~ client))
+        (when (or (follow? destination) (eq? style 'Highlight))
+          (execute-event
+            (lambda ()
+              (bell)
+              (flash-window~ (get-toplevel))))))))
   
   
   (method (mark-callback)
