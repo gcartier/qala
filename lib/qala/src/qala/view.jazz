@@ -228,7 +228,7 @@
   (method (clear-callback)
     (execute-event
       (lambda ()
-        (clear-all~ (locate-text)))))
+        (clear-text~ (locate-text)))))
   
   
   (method (numeric-callback nickname messages)
@@ -246,7 +246,7 @@
   
   (method (connect)
     (define (setup-ui)
-      (clear-all~ (locate-text))
+      (clear-text~ (locate-text))
       (remove-every-row~ (locate-channels))
       (remove-every-row~ (locate-members)))
     
@@ -410,10 +410,7 @@
         (set-title~ (get-host) (if (not channel)
                                    "IRC"
                                  (present~ channel)))
-        (let ((text (get-text~ (locate-shell))))
-          (clear-all~ text)
-          (when channel
-            (insert-styled~ text (format "{a}:" (get-name~ channel)) 'Separator))))))
+        (clear-text~ (get-text~ (locate-shell))))))
   
   
   (method (topic-update channel)
@@ -570,7 +567,14 @@
   
   
   (method override (focus-empty)
-    ))
+    )
+  
+  
+  (method (clear-text)
+    (clear-all)
+    (let ((channel (get-channel~ (find-ascendant IRC-View))))
+      (when channel
+        (insert-styled (format "{a}:" (get-name~ channel)) 'Separator)))))
 
 
 ;;;
@@ -587,7 +591,7 @@
   
   (method (on-finish evt)
     (process-command~ (get-guest~ text) (last-content~ text))
-    (clear-all~ text))
+    (clear-text~ text))
   
   
   (method (on-cancel evt)
