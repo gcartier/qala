@@ -9,7 +9,12 @@
 (module qala.ini jazz
 
 
-(export (qala.settings))
+(export (irregex)
+        (jazz.graphic)
+        (jazz.jml)
+        (jazz.library)
+        (qala.preferences)
+        (qala.settings))
 
 (import (jazz.library)
         (jazz.ui)

@@ -1,0 +1,33 @@
+;;;==============
+;;;  JazzScheme
+;;;==============
+;;;
+;;;; Qala Preferences
+;;;
+
+
+(module qala.preferences jazz
+
+
+(import (jazz.graphic)
+        (jazz.jml)
+        (jazz.library))
+
+
+;;;
+;;;; Preferences
+;;;
+
+
+(class IRC-Preferences extends Component)
+
+
+;;;
+;;;; Channel-Preferences
+;;;
+
+
+(class IRC-Channel-Preferences extends Component
+  
+  
+  (property color initialize #f accessors generate)))

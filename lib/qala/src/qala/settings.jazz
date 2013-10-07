@@ -9,7 +9,9 @@
 (module qala.settings jazz
 
 
-(import (jazz.library))
+(import (jazz.jml)
+        (jazz.library)
+        (qala.preferences))
 
 
 (define-setting qala-debug?
@@ -22,8 +24,20 @@
 
 
 (define-setting qala-highlight?
-  (lambda (channel-name)
+  (lambda (channel-name message)
     #f))
+
+
+(define-setting qala-preferences
+  (instantiate~
+    (<form>
+      (<IRC-Preferences>))))
+
+
+(define-setting qala-channel-preferences
+  (instantiate~
+    (<form>
+      (<IRC-Channel-Preferences>))))
 
 
 (define-setting qala-connect

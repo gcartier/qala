@@ -12,6 +12,7 @@
 (import (jazz.debuggee)
         (jazz.editor.lisp)
         (jazz.editor.jazz)
+        (jazz.graphic)
         (jazz.io)
         (jazz.jml)
         (jazz.library)
@@ -95,6 +96,9 @@
   
   (method override (conclude-environment)
     (nextmethod)
+    (register-reader-extension "qalaini"
+      (lambda ()
+        jazz-readtable))
     (load-qalaini))
 
   

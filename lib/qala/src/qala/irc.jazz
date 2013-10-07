@@ -47,6 +47,10 @@
     (set! view~self view))
   
   
+  (method (me? nickname)
+    (equal? nickname nick))
+  
+  
   ;;;
   ;;;; Connection
   ;;;
@@ -60,6 +64,15 @@
     (when port
       (close-port port)
       (set! port #f)))
+  
+  
+  ;;;
+  ;;;; Channels
+  ;;;
+  
+  
+  (method public (join-channels channel-names)
+    (for-each join-command channel-names))
   
   
   ;;;
@@ -116,9 +129,8 @@
               ((ci=? command "PRIVMSG")
                (match-regexp prefix
                  (("([^!]+)!([^ ]+)" nickname host)
-                  (let ((style (if (equal? nickname nick) 'Self 'Message)))
-                    (bind (destination message) parameters
-                      (privmsg-callback~ view nickname destination message))))))
+                  (bind (destination message) parameters
+                    (privmsg-callback~ view nickname destination message)))))
               ((numeric? command)
                (bind (nickname . messages) parameters
                  (numeric-callback~ view nickname messages)))

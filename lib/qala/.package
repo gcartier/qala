@@ -6,6 +6,7 @@
                        (update qala.application
                                qala.ini
                                qala.irc
+                               qala.preferences
                                qala.settings
                                qala.view
                                qala.run)
