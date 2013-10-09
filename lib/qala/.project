@@ -23,4 +23,5 @@
         (<Jazz-File>       name: run         source: {File :context "src" "qala" "run.jazz"})
         (<Jazz-File>       name: settings    source: {File :context "src" "qala" "settings.jazz"})
         (<Jazz-File>       name: view        source: {File :context "src" "qala" "view.jazz"})
-        (<Jazz-File>       name: text        source: {File :context "src" "qala" "text.jazz"}))))))
+        (<Jazz-File>       name: text        source: {File :context "src" "qala" "text.jazz"})
+        (<Jazz-File>       name: preferences source: {File :context "src" "qala" "preferences.jazz"}))))))

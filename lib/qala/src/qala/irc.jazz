@@ -37,6 +37,7 @@
   (slot port initialize #f getter generate)
   
   
+  (slot sound? initialize (qala-sound?) accessors generate)
   (slot debug? initialize (qala-debug?) accessors generate)
   
   

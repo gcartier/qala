@@ -57,7 +57,9 @@
         (<Action-Icon>                                   tooltip-text: "Quit Server" resource: {Image-Resource "Empty"} action-handler: {Event-Handler :form on-quit})
         (<Separator>)
         (<Action-Icon>                                   tooltip-text: "Reconnect Server" resource: {Image-Resource "Link"} action-handler: {Event-Handler :form on-reconnect})
-        (<Toggle-Tool>                                   size: {Dimension 22 22} location: tail tooltip?: #t tooltip-text: "Debug" resource: {Image-Resource "Debugger"} portfolio: :images action-handler: {Event-Handler :form on-debug}))
+        (<Separator>)
+        (<Toggle-Tool>                  name: sound      size: {Dimension 22 22} tooltip?: #t tooltip-text: "Sound" resource: {Image-Resource "MsgUser"} portfolio: :images action-handler: {Event-Handler :form on-sound})
+        (<Toggle-Tool>                  name: debug      size: {Dimension 22 22} location: tail tooltip?: #t tooltip-text: "Debug" resource: {Image-Resource "Debugger"} portfolio: :images action-handler: {Event-Handler :form on-debug}))
       (<Border-View>                                     location: center border-type: edge style: entry
         (<Splitter-View>                                 style: document orientation: horz mode: absolute division: -200
           (<Scroller-View>                               location: first position: {Point 46 0} size: {Dimension 300 19} style: document hscroll?: #f vscroll?: #t
@@ -134,6 +136,12 @@
   (method (on-channel evt)
     (let ((channel (get-single-selected-data~ (locate-channels))))
       (select-channel channel)))
+  
+  
+  (method (on-sound evt)
+    (if (not client)
+        (bell)
+      (set-sound?~ client (get-selected?~ (get-sender~ evt)))))
   
   
   (method (on-debug evt)
@@ -224,7 +232,8 @@
           (when (or (follow? destination) (eq? style 'Highlight))
             (execute-event
               (lambda ()
-                (bell)
+                (when (get-sound?~ client)
+                  (bell))
                 (flash-window~ (get-toplevel)))))))))
   
   
@@ -275,10 +284,15 @@
                     (when (process-input~ client)
                       (process))))))))
     
+    (define (setup-interface)
+      (set-selected?~ (locate 'sound) (get-sound?~ client))
+      (set-selected?~ (locate 'debug) (get-debug?~ client)))
+    
     (setup-ui)
     (setup-client)
     (setup-connection)
     (setup-thread)
+    (setup-interface)
     client)
   
   

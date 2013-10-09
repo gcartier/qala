@@ -14,7 +14,7 @@
         (qala.preferences))
 
 
-(define-setting qala-debug?
+(define-setting qala-sound?
   #f)
 
 
@@ -47,4 +47,8 @@
 
 (define-setting qala-prelude
   (lambda ()
-    #f)))
+    #f))
+
+
+(define-setting qala-debug?
+  #f))
