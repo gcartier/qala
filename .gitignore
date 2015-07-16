@@ -1,7 +1,9 @@
 /bin
 /build
+/cache
 /deploy
 /gambit
+/jazz
 .configuration
 .jazzini
 .DS_Store
