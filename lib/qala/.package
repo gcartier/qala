@@ -1,32 +1,36 @@
 (package qala
   
+  (title "Qala")
+  (description "IRC client")
+  (authors "Guillaume Cartier")
+  (stage experimental)
   (root "src")
   (products (qala (title "Qala")
-                       (run qala.run)
-                       (update qala.application
-                               qala.ini
-                               qala.irc
-                               qala.preferences
-                               qala.settings
-                               qala.view
-                               qala.run)
-                       (build (qala resources: "resources"))
-                       (dependencies jazz
-                                     jazz.debuggee
-                                     jazz.designer
-                                     jazz.editor.jazz
-                                     jazz.graphic
-                                     jazz.io
-                                     jazz.jml
-                                     jazz.jrm
-                                     jazz.library
-                                     jazz.media
-                                     jazz.network
-                                     jazz.platform
-                                     jazz.profile
-                                     jazz.system
-                                     jazz.ui
-                                     contrib.irregex
-                                     srfi-19
-                                     profiler)))
+                  (run qala.run)
+                  (update qala.application
+                          qala.ini
+                          qala.irc
+                          qala.preferences
+                          qala.settings
+                          qala.view
+                          qala.run)
+                  (build (qala resources: "resources"))
+                  (dependencies jazz
+                                jazz.debuggee
+                                jazz.designer
+                                jazz.editor.jazz
+                                jazz.graphic
+                                jazz.io
+                                jazz.jml
+                                jazz.jrm
+                                jazz.library
+                                jazz.media
+                                jazz.network
+                                jazz.platform
+                                jazz.profile
+                                jazz.system
+                                jazz.ui
+                                contrib.irregex
+                                srfi-19
+                                profiler)))
   (project ".project"))
