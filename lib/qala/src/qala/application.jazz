@@ -9,7 +9,8 @@
 (module qala.application jazz
 
 
-(import (jazz.debuggee)
+(import (jazz.application)
+        (jazz.debuggee)
         (jazz.editor.lisp)
         (jazz.editor.jazz)
         (jazz.graphic)
@@ -18,7 +19,6 @@
         (jazz.library)
         (jazz.platform)
         (jazz.system)
-        (jazz.system.application)
         (jazz.ui)
         (jazz.ui.dialog)
         (jazz.ui.view)

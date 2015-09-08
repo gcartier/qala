@@ -9,9 +9,9 @@
 (module qala.preferences jazz
 
 
-(import (jazz.graphic)
-        (jazz.jml)
-        (jazz.library))
+(import (jazz.component)
+        (jazz.graphic)
+        (jazz.jml))
 
 
 ;;;

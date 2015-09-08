@@ -9,7 +9,9 @@
 (module qala.view jazz
 
 
-(import (jazz.graphic)
+(import (jazz.application)
+        (jazz.event)
+        (jazz.graphic)
         (jazz.jml)
         (jazz.library)
         (jazz.locale)
