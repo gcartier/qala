@@ -9,7 +9,7 @@
 (module qala.irc jazz
 
 
-(import (jazz.library)
+(import (jazz.match)
         (qala.settings))
 
 

@@ -12,13 +12,11 @@
 (export (irregex)
         (jazz.graphic)
         (jazz.jml)
-        (jazz.library)
         (qala.preferences)
         (qala.settings))
 
-(import (jazz.library)
-        (jazz.ui)
-        (jazz.ui.view)
+(import (jazz.ui)
+        (jazz.view)
         (qala.irc)
         (qala.view))
 

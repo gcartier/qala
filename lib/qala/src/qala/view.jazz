@@ -9,17 +9,18 @@
 (module qala.view jazz
 
 
-(import (jazz.application)
+(import (jazz.action)
+        (jazz.application)
         (jazz.event)
         (jazz.graphic)
         (jazz.jml)
-        (jazz.library)
         (jazz.locale)
-        (jazz.system)
+        (jazz.text)
+        (jazz.tree)
         (jazz.ui)
-        (jazz.ui.view)
-        (jazz.ui.window)
+        (jazz.view)
         (irregex)
+        (jazz.window)
         (qala.settings)
         (qala.irc))
 
