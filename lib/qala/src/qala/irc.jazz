@@ -13,6 +13,22 @@
         (qala.settings))
 
 
+(hub clear-callback)
+(hub default-callback)
+(hub insert)
+(hub join-callback)
+(hub mark-callback)
+(hub names-callback)
+(hub names-end-callback)
+(hub notice-callback)
+(hub numeric-callback)
+(hub part-callback)
+(hub privmsg-callback)
+(hub quit-callback)
+(hub topic-callback)
+(hub topic-owner-callback)
+
+
 (define default-server-address
   "irc.freenode.org")
 
@@ -41,14 +57,14 @@
   (slot debug? initialize (qala-debug?) accessors generate)
   
   
-  (method override (initialize (server-address: server-address #f) (port-number: port-number #f) (view: view #f))
-    (nextmethod)
-    (set! server-address~self (or server-address default-server-address))
-    (set! port-number~self (or port-number default-port-number))
-    (set! view~self view))
+  (method override (initialize self (server-address: server-address #f) (port-number: port-number #f) (view: view #f))
+    (nextmethod self)
+    (set! self.server-address (or server-address default-server-address))
+    (set! self.port-number (or port-number default-port-number))
+    (set! self.view view))
   
   
-  (method (me? nickname)
+  (method package (me? self nickname)
     (equal? nickname nick))
   
   
@@ -57,11 +73,11 @@
   ;;;
   
   
-  (method public (connect)
+  (method public (connect self)
     (set! port (open-tcp-client (list server-address: server-address port-number: port-number))))
   
   
-  (method public (disconnect)
+  (method public (disconnect self)
     (when port
       (close-port port)
       (set! port #f)))
@@ -72,7 +88,7 @@
   ;;;
   
   
-  (method public (join-channels channel-names)
+  (method public (join-channels self channel-names)
     (for-each join-command channel-names))
   
   
@@ -81,62 +97,62 @@
   ;;;
   
   
-  (method public (process-input)
-    (let ((line (with-exception-filter
+  (method public (process-input self)
+    (let ((line (catch-exception-filter
                   (lambda (exception)
                     #t)
                   (lambda (exception)
-                    (insert~ view "*** disconnected" 'Command)
+                    (insert view "*** disconnected" 'Command)
                     #f)
                   (lambda ()
                     (read-line port)))))
       (unless (or (not line) (eof-object? line))
-        (process-line line)
+        (process-line self line)
         #t)))
   
   
-  (method (process-line line)
+  (method (process-line self line)
     (define (process prefix command params)
       (let ((parameters (parse-parameters params)))
         (cond ((ci=? command "332")
                (bind (nickname channel-name topic) parameters
-                 (topic-callback~ view channel-name topic)))
+                 (topic-callback view channel-name topic)))
               ((ci=? command "333")
                (bind (nickname channel-name owner) parameters
-                 (topic-owner-callback~ view channel-name owner)))
+                 (topic-owner-callback view channel-name owner)))
               ((ci=? command "353")
                (bind (nickname equal channel-name members) parameters
-                 (names-callback~ view channel-name (split members " "))))
+                 (names-callback view channel-name (split members " "))))
               ((ci=? command "366")
                (bind (nickname channel-name) parameters
-                 (names-end-callback~ view channel-name)))
+                 (names-end-callback view channel-name)))
               ((ci=? command "NOTICE")
                (bind (star message) parameters
-                 (notice-callback~ view message)))
+                 (notice-callback view message)))
               ((ci=? command "PING")
                (let ((reply (car parameters)))
                  (pong-command reply)))
               ((ci=? command "JOIN")
                (receive (nickname user host) (parse-prefix prefix)
                  (let ((channel-name (car parameters)))
-                   (join-callback~ view nickname user channel-name))))
+                   (join-callback view nickname user channel-name))))
               ((ci=? command "PART")
                (receive (nickname user host) (parse-prefix prefix)
                  (let ((channel-name (car parameters)))
-                   (part-callback~ view nickname user channel-name))))
+                   (part-callback view nickname user channel-name))))
               ((ci=? command "QUIT")
                (receive (nickname user host) (parse-prefix prefix)
-                 (quit-callback~ view nickname user)))
+                 (quit-callback view nickname user)))
               ((ci=? command "PRIVMSG")
                (match-regexp prefix
                  (("([^!]+)!([^ ]+)" nickname host)
                   (bind (destination message) parameters
-                    (privmsg-callback~ view nickname destination message)))))
+                    (privmsg-callback view nickname destination message)))))
               ((numeric? command)
                (bind (nickname . messages) parameters
-                 (numeric-callback~ view nickname messages)))
+                 (numeric-callback view nickname messages)))
               (else
-               (default-callback~ view prefix command parameters)))))
+               (default-callback view prefix command parameters)))))
     
     (define (parse-prefix prefix)
       (match-regexp prefix
@@ -169,7 +185,7 @@
   ;;;
   
   
-  (method public (send message)
+  (method public (send self message)
     (display message port)
     (newline port)
     (force-output port)
@@ -182,93 +198,93 @@
   ;;;
   
   
-  (method public (process channel-name message)
+  (method public (process self channel-name message)
     (match-regexp message
-      (("^/mark$")                                   (mark-command))
-      (("^/clear$")                                  (clear-command))
-      (("^/quit (.+)$" message)                      (quit-command message))
-      (("^/quit$")                                   (quit-command))
-      (("^/me (.+)$" message)                        (action-command channel-name message))
-      (("^/pass (.+)$" password)                     (pass-command password))
-      (("^/nick (.+)$" nickname)                     (nick-command nickname))
-      (("^/user ([^ ]+) (.+)$" user realname)        (user-command user realname))
-      (("^/oper ([^ ]+) (.+)$" name password)        (oper-command name password))
-      (("^/mode$")                                   (mode-command nick))
-      (("^/mode (.+)$" flags)                        (mode-command nick flags))
-      (("^/mode (#.+)$" channel)                     (mode-command channel))
-      (("^/mode (#.+) (.+)$" channel flags)          (mode-command channel flags))
-      (("^/join (.+)$" channel-name)                 (join-command channel-name))
-      (("^/part ([^ ]+)$" channel-name)              (part-command channel-name))
-      (("^/part ([^ ]+) (.+)$" channel-name message) (part-command channel-name message))
-      (("^/part$")                                   (part-command channel-name))
-      (("^/topic (.+)$" message)                     (topic-command channel-name message))
-      (("^/ctcp (.+?) (.+)$" dest message)           (ctcp-command dest message))
-      (("^/notice (.+?) (.+)$" dest message)         (notice-command dest message))
-      (("^/msg (.+?) (.+)$" dest message)            (privmsg-command dest message))
-      (else                                          (privmsg-command channel-name message))))
+      (("^/mark$")                                   (mark-command self))
+      (("^/clear$")                                  (clear-command self))
+      (("^/quit (.+)$" message)                      (quit-command self message))
+      (("^/quit$")                                   (quit-command self))
+      (("^/me (.+)$" message)                        (action-command self channel-name message))
+      (("^/pass (.+)$" password)                     (pass-command self password))
+      (("^/nick (.+)$" nickname)                     (nick-command self nickname))
+      (("^/user ([^ ]+) (.+)$" user realname)        (user-command self user realname))
+      (("^/oper ([^ ]+) (.+)$" name password)        (oper-command self name password))
+      (("^/mode$")                                   (mode-command self nick))
+      (("^/mode (.+)$" flags)                        (mode-command self nick flags))
+      (("^/mode (#.+)$" channel)                     (mode-command self channel))
+      (("^/mode (#.+) (.+)$" channel flags)          (mode-command self channel flags))
+      (("^/join (.+)$" channel-name)                 (join-command self channel-name))
+      (("^/part ([^ ]+)$" channel-name)              (part-command self channel-name))
+      (("^/part ([^ ]+) (.+)$" channel-name message) (part-command self channel-name message))
+      (("^/part$")                                   (part-command self channel-name))
+      (("^/topic (.+)$" message)                     (topic-command self channel-name message))
+      (("^/ctcp (.+?) (.+)$" dest message)           (ctcp-command self dest message))
+      (("^/notice (.+?) (.+)$" dest message)         (notice-command self dest message))
+      (("^/msg (.+?) (.+)$" dest message)            (privmsg-command self dest message))
+      (else                                          (privmsg-command self channel-name message))))
   
   
-  (method (pong-command reply)
-    (send (format "PONG {a}" reply)))
+  (method (pong-command self reply)
+    (send self (format "PONG {a}" reply)))
   
   
-  (method (pass-command password)
-    (send (format "PASS {a}" password)))
+  (method (pass-command self password)
+    (send self (format "PASS {a}" password)))
   
   
-  (method (nick-command nickname)
-    (send (format "NICK {a}" nickname))
+  (method (nick-command self nickname)
+    (send self (format "NICK {a}" nickname))
     (set! nick nickname))
   
   
-  (method (user-command user realname)
-    (send (format "USER {a} 0 * :{a}" user realname)))
+  (method (user-command self user realname)
+    (send self (format "USER {a} 0 * :{a}" user realname)))
   
   
-  (method (oper-command name password)
-    (send (format "OPER {a} {a}" name password)))
+  (method (oper-command self name password)
+    (send self (format "OPER {a} {a}" name password)))
   
   
-  (method (mode-command nickname (flags #f))
-    (send (format "MODE {a}{? {a}~}" nickname flags)))
+  (method (mode-command self nickname (flags #f))
+    (send self (format "MODE {a}{? {a}~}" nickname flags)))
   
   
-  (method (privmsg-command destination message)
-    (send (format "PRIVMSG {a} :{a}" destination message))
-    (privmsg-callback~ view nick destination message))
+  (method (privmsg-command self destination message)
+    (send self (format "PRIVMSG {a} :{a}" destination message))
+    (privmsg-callback view nick destination message))
   
   
-  (method (join-command channel-name)
-    (send (format "JOIN {a}" channel-name)))
+  (method (join-command self channel-name)
+    (send self (format "JOIN {a}" channel-name)))
   
   
-  (method (part-command channel-name (message ""))
-    (send (format "PART {a} :{a}" channel-name message)))
+  (method (part-command self channel-name (message ""))
+    (send self (format "PART {a} :{a}" channel-name message)))
   
   
-  (method (topic-command channel-name message)
-    (send (format "TOPIC {a} :{a}" channel-name message)))
+  (method (topic-command self channel-name message)
+    (send self (format "TOPIC {a} :{a}" channel-name message)))
   
   
-  (method (ctcp-command destination message)
+  (method (ctcp-command self destination message)
     (privmsg-command destination (string-append "\001" message "\001")))
   
   
-  (method (action-command destination message)
+  (method (action-command self destination message)
     (ctcp-command destination (string-append "ACTION " message)))
   
   
-  (method (notice-command destination message)
-    (send (format "NOTICE {a} :{a}" destination message)))
+  (method (notice-command self destination message)
+    (send self (format "NOTICE {a} :{a}" destination message)))
   
   
-  (method (mark-command)
-    (mark-callback~ view))
+  (method (mark-command self)
+    (mark-callback view))
   
   
-  (method (clear-command)
-    (clear-callback~ view))
+  (method (clear-command self)
+    (clear-callback view))
   
   
-  (method (quit-command (message ""))
-    (send (format "QUIT :{a}" message)))))
+  (method package (quit-command self (message ""))
+    (send self (format "QUIT :{a}" message)))))

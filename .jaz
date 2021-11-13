@@ -1,0 +1,2 @@
+export JAZCONF=l
+export JAZDEST=cache/develop

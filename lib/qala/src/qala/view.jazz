@@ -11,16 +11,23 @@
 
 (import (jazz.action)
         (jazz.application)
+        (jazz.command)
+        (jazz.component)
         (jazz.event)
         (jazz.graphic)
-        (jazz.jml)
+        (jazz.handler)
+        (jazz.layout)
         (jazz.locale)
+        (jazz.markup)
+        (jazz.match)
+        (jazz.outline)
+        (jazz.resource)
         (jazz.text)
         (jazz.tree)
         (jazz.ui)
         (jazz.view)
-        (irregex)
         (jazz.window)
+        (irregex)
         (qala.settings)
         (qala.irc))
 
@@ -33,13 +40,13 @@
 (class IRC-View extends Layout-View
   
   
-  (method meta override (host-icon)
+  (method meta override (host-icon self)
     {Image-Resource "Pad"})
   
-  (method meta override (host-title)
+  (method meta override (host-title self)
     "IRC")
   
-  (method meta override (host-size)
+  (method meta override (host-size self)
     {Dimension 800 500})
   
   
@@ -80,9 +87,9 @@
       (<IRC-Command-Shell>              name: shell      size: {Dimension 300 15} location: south)))
   
   
-  (method override (destroy)
-    (disconnect closing?: #t)
-    (nextmethod))
+  (method override (destroy self)
+    (disconnect self closing?: #t)
+    (nextmethod self))
   
   
   ;;;
@@ -90,24 +97,24 @@
   ;;;
   
   
-  (method public (locate-text)
-    (locate 'text))
+  (method public (locate-text self)
+    (locate self 'text))
   
   
-  (method public (locate-channels)
-    (locate 'channels))
+  (method public (locate-channels self)
+    (locate self 'channels))
   
   
-  (method public (locate-members)
-    (locate 'members))
+  (method public (locate-members self)
+    (locate self 'members))
   
   
-  (method public (locate-shell)
-    (locate 'shell))
+  (method public (locate-shell self)
+    (locate self 'shell))
   
   
-  (method (set-preferences form)
-    (set! preferences (instantiate~ form)))
+  (method (set-preferences self form)
+    (set! preferences (instantiate form)))
   
   
   ;;;
@@ -115,8 +122,8 @@
   ;;;
   
   
-  (method override (focus-default)
-    (acquire-focus~ (get-text~ (locate 'shell))))
+  (method override (focus-default self)
+    (acquire-focus (get-text (locate self 'shell))))
   
   
   ;;;
@@ -124,33 +131,33 @@
   ;;;
   
   
-  (method (on-quit evt)
+  (method (on-quit self evt)
     (if (not client)
         (bell)
-      (quit-command~ client)))
+      (quit-command client)))
   
   
-  (method (on-reconnect evt)
+  (method (on-reconnect self evt)
     (if (not client)
         (bell)
-      (reconnect)))
+      (reconnect self)))
   
   
-  (method (on-channel evt)
-    (let ((channel (get-single-selected-data~ (locate-channels))))
-      (select-channel channel)))
+  (method (on-channel self evt)
+    (let ((channel (get-single-selected-data (locate-channels self))))
+      (select-channel self channel)))
   
   
-  (method (on-sound evt)
+  (method (on-sound self evt)
     (if (not client)
         (bell)
-      (set-sound?~ client (get-selected?~ (get-sender~ evt)))))
+      (set-sound? client (get-selected? (get-sender evt)))))
   
   
-  (method (on-debug evt)
+  (method (on-debug self evt)
     (if (not client)
         (bell)
-      (set-debug?~ client (get-selected?~ (get-sender~ evt)))))
+      (set-debug? client (get-selected? (get-sender evt)))))
   
   
   ;;;
@@ -158,104 +165,104 @@
   ;;;
   
   
-  (method (notice-callback message)
-    (insert message))
+  (method (notice-callback self message)
+    (insert self message))
   
   
-  (method (join-callback nickname user channel-name)
-    (insert (format "*** {a} joined {a}" nickname channel-name) 'Command)
-    (if (me?~ client nickname)
+  (method (join-callback self nickname user channel-name)
+    (insert self (format "*** {a} joined {a}" nickname channel-name) 'Command)
+    (if (me? client nickname)
         (join-channel channel-name)
-      (channel-add channel-name nickname)))
+      (channel-add self channel-name nickname)))
   
   
-  (method (part-callback nickname user channel-name)
-    (insert (format "*** {a} left {a}" nickname channel-name) 'Command)
-    (if (me?~ client nickname)
+  (method (part-callback self nickname user channel-name)
+    (insert self (format "*** {a} left {a}" nickname channel-name) 'Command)
+    (if (me? client nickname)
         (part-channel channel-name)
-      (channel-remove channel-name nickname)))
+      (channel-remove self channel-name nickname)))
   
   
-  (method (quit-callback nickname user)
-    (insert (format "*** {a} quit" nickname) 'Command)
-    (if (me?~ client nickname)
+  (method (quit-callback self nickname user)
+    (insert self (format "*** {a} quit" nickname) 'Command)
+    (if (me? client nickname)
         (post-event
           (lambda ()
-            (disconnect)))
+            (disconnect self)))
       (for-each (lambda (channel)
-                  (let ((channel-name (get-name~ channel)))
-                    (channel-remove channel-name nickname)))
+                  (let ((channel-name (get-name channel)))
+                    (channel-remove self channel-name nickname)))
                 channels)))
   
   
-  (method (topic-callback channel-name topic)
-    (let ((channel (find-channel channel-name)))
+  (method (topic-callback self channel-name topic)
+    (let ((channel (find-channel self channel-name)))
       (when channel
-        (set-topic~ channel topic)
-        (topic-update channel))))
+        (set-topic channel topic)
+        (topic-update self channel))))
   
   
-  (method (topic-owner-callback channel-name owner)
-    (let ((channel (find-channel channel-name)))
+  (method (topic-owner-callback self channel-name owner)
+    (let ((channel (find-channel self channel-name)))
       (when channel
-        (set-topic-owner~ channel owner)
-        (topic-owner-update channel))))
+        (set-topic-owner channel owner)
+        (topic-owner-update self channel))))
   
   
-  (method (names-callback channel-name member-names)
-    (let ((channel (find-channel channel-name)))
+  (method (names-callback self channel-name member-names)
+    (let ((channel (find-channel self channel-name)))
       (when channel
         (let ((actual-members
-                (if (get-members-receiving?~ channel)
-                    (get-members~ channel)
-                  (set-members-receiving?~ channel #t)
+                (if (get-members-receiving? channel)
+                    (get-members channel)
+                  (set-members-receiving? channel #t)
                   '())))
-          (set-members~ channel (append actual-members member-names))))))
+          (set-members channel (append actual-members member-names))))))
   
   
-  (method (names-end-callback channel-name)
-    (let ((channel (find-channel channel-name)))
+  (method (names-end-callback self channel-name)
+    (let ((channel (find-channel self channel-name)))
       (when channel
-        (set-members-receiving?~ channel #f)
-        (members-update channel))))
+        (set-members-receiving? channel #f)
+        (members-update self channel))))
   
   
-  (method (privmsg-callback nickname destination message)
-    (let ((channel (find-channel destination)))
-      (let ((style (cond ((me?~ client nickname) 'Self)
+  (method (privmsg-callback self nickname destination message)
+    (let ((channel (find-channel self destination)))
+      (let ((style (cond ((me? client nickname) 'Self)
                          ((highlight? destination message) 'Highlight)
-                         ((get-color~ channel) => (lambda (color) (new Text-Style base: 'Base color: color)))
+                         ((get-color channel) => (lambda (color) (new Text-Style base: 'Base color: color)))
                          (else 'Message))))
         (match-regexp message
           (("\1ACTION (.*)\1" message)
-           (insert (format "[{a}] * {a} {a}" destination nickname message) style))
+           (insert self (format "[{a}] * {a} {a}" destination nickname message) style))
           (else
-           (insert (format "[{a}] <{a}> {a}" destination nickname message) style)))
-        (unless (me?~ client nickname)
+           (insert self (format "[{a}] <{a}> {a}" destination nickname message) style)))
+        (unless (me? client nickname)
           (when (or (follow? destination) (eq? style 'Highlight))
-            (execute-event
+            (send-event
               (lambda ()
-                (when (get-sound?~ client)
+                (when (get-sound? client)
                   (bell))
-                (flash-window~ (get-toplevel)))))))))
+                (user-attention (current-toplevel)))))))))
   
   
-  (method (mark-callback)
-    (insert (make-string 100 #\-) 'Mark))
+  (method (mark-callback self)
+    (insert self (make-string 100 #\-) 'Mark))
   
   
-  (method (clear-callback)
-    (execute-event
+  (method (clear-callback self)
+    (send-event
       (lambda ()
-        (clear-all~ (locate-text)))))
+        (clear-all self (locate-text self)))))
   
   
-  (method (numeric-callback nickname messages)
-    (insert (format "*** {l detail: :human}" messages)))
+  (method (numeric-callback self nickname messages)
+    (insert self (format "*** {l detail: :human}" messages)))
   
   
-  (method (default-callback prefix command parameters)
-    (insert (format "*** {a} {l detail: :human}" command parameters)))
+  (method (default-callback self prefix command parameters)
+    (insert self (format "*** {a} {l detail: :human}" command parameters)))
     
   
   ;;;
@@ -263,19 +270,19 @@
   ;;;
   
   
-  (method (connect)
+  (method public (connect self)
     (define (setup-ui)
-      (clear-all~ (locate-text))
-      (remove-every-row~ (locate-channels))
-      (remove-every-row~ (locate-members)))
+      (clear-all (locate-text self))
+      (remove-every-row (locate-channels self))
+      (remove-every-row (locate-members self)))
     
     (define (setup-client)
       (set! client (new IRC-Client view: self)))
     
     (define (setup-connection)
-      (insert (format "Connecting to {a}"
-                      (get-server-address~ client)))
-      (connect~ client))
+      (insert self (format "Connecting to {a}"
+                           (get-server-address client)))
+      (connect client))
     
     (define (setup-thread)
       (set! thread
@@ -284,12 +291,12 @@
                 (lambda ()
                   (declare (proper-tail-calls))
                   (let (process)
-                    (when (process-input~ client)
+                    (when (process-input client)
                       (process))))))))
     
     (define (setup-interface)
-      (set-selected?~ (locate 'sound) (get-sound?~ client))
-      (set-selected?~ (locate 'debug) (get-debug?~ client)))
+      (set-selected? (locate self 'sound) (get-sound? client))
+      (set-selected? (locate self 'debug) (get-debug? client)))
     
     (setup-ui)
     (setup-client)
@@ -299,25 +306,25 @@
     client)
   
   
-  (method (disconnect (closing?: closing? #f))
+  (method (disconnect self (closing?: closing? #f))
     (when thread
       (thread-interrupt! thread thread-exit)
       (set! thread #f))
     (when client
-      (let ((server-address (get-server-address~ client)))
-        (disconnect~ client)
+      (let ((server-address (get-server-address client)))
+        (disconnect client)
         (unless closing?
-          (insert (format "Disconnected from {a}" server-address)))))
+          (insert self (format "Disconnected from {a}" server-address)))))
     (set! channel #f)
     (set! channels '())
     (unless closing?
-      (remove-every-row~ (locate-channels))
-      (remove-every-row~ (locate-members))))
+      (remove-every-row (locate-channels self))
+      (remove-every-row (locate-members self))))
   
   
-  (method (reconnect)
-    (disconnect)
-    (connect)
+  (method (reconnect self)
+    (disconnect self)
+    (connect self)
     ((qala-connect) client))
     
   
@@ -326,30 +333,30 @@
   ;;;
   
   
-  (method (insert line (style #f))
+  (method (insert self line (style #f))
     (define (emphasize text line char)
       (when (find line char)
         (let ((emphasis? #f))
           (for-each (lambda (part)
                       (if emphasis?
-                          (insert-styled~ text part 'Emphasis)
-                        (insert-string~ text part))
+                          (insert-styled text part 'Emphasis)
+                        (insert-string text part))
                       (set! emphasis? (not emphasis?)))
                     (split-string line char)))
         #t))
     
-    (execute-event
+    (send-event
       (lambda ()
-        (let ((text (locate-text)))
-          (let ((end (text-ending~ text)))
-            (set-caret~ text end)
-            (when (/= (get-col~ end) 0)
-              (insert-newline~ text))
+        (let ((text (locate-text self)))
+          (let ((end (text-ending text)))
+            (set-caret text end)
+            (when (/= (get-col end) 0)
+              (insert-newline text))
             (if style
-                (insert-styled~ text line style)
+                (insert-styled text line style)
               (or (emphasize text line #\x02)
                   (emphasize text line #\down-arrow)
-                  (insert-string~ text line))))))))
+                  (insert-string text line))))))))
     
   
   ;;;
@@ -357,53 +364,53 @@
   ;;;
   
   
-  (method (join-channel channel-name)
-    (let ((channel (register-channel channel-name))
-          (tree (locate-channels)))
-      (add-row~ tree children: (list (new Tree-Node title: channel-name)) user-data: channel)
-      (select-channel channel)
-      (let ((row (user-data-row~ tree channel)))
-        (set-single-selection~ tree (row->line~ tree row)))))
+  (method (join-channel self channel-name)
+    (let ((channel (register-channel self channel-name))
+          (tree (locate-channels self)))
+      (add-row tree children: (list (new Tree-Node title: channel-name)) user-data: channel)
+      (select-channel self channel)
+      (let ((row (user-data-row tree channel)))
+        (set-single-selection tree (row->line tree row)))))
   
   
-  (method (part-channel channel-name)
-    (let ((channel (find-channel channel-name)))
+  (method (part-channel self channel-name)
+    (let ((channel (find-channel self channel-name)))
       (if (not channel)
           (bell)
-        (unregister-channel channel)
-        (let ((tree (locate-channels)))
-          (let ((row (user-data-row~ tree channel)))
+        (unregister-channel self channel)
+        (let ((tree (locate-channels self)))
+          (let ((row (user-data-row tree channel)))
             (when row
-              (remove-row~ tree row)
-              (if (> (get-visible-count~ tree) 0)
-                  (set-single-selection~ tree 0)
-                (select-channel #f))))))))
+              (remove-row tree row)
+              (if (> (get-visible-count tree) 0)
+                  (set-single-selection tree 0)
+                (select-channel self #f))))))))
   
   
-  (method (channel-add channel-name member-name)
-    (let ((chan (find-channel channel-name)))
+  (method (channel-add self channel-name member-name)
+    (let ((chan (find-channel self channel-name)))
       (when chan
-        (set-members~ chan (append (get-members~ chan) (list member-name)))
+        (set-members chan (append (get-members chan) (list member-name)))
         (when (eq? chan channel)
-          (let ((tree (locate-members)))
-            (add-row~ tree children: (list (new Tree-Node title: member-name)) user-data: member-name))))))
+          (let ((tree (locate-members self)))
+            (add-row tree children: (list (new Tree-Node title: member-name)) user-data: member-name))))))
   
   
-  (method (channel-remove channel-name member-name)
-    (let ((chan (find-channel channel-name)))
+  (method (channel-remove self channel-name member-name)
+    (let ((chan (find-channel self channel-name)))
       (when chan
-        (set-members~ chan (remove! member-name (get-members~ chan) test: equal?))
+        (set-members chan (remove! member-name (get-members chan) test: equal?))
         (when (eq? chan channel)
-          (let ((tree (locate-members)))
-            (let ((row (user-data-row~ tree member-name test: equal?)))
+          (let ((tree (locate-members self)))
+            (let ((row (user-data-row tree member-name test: equal?)))
               (when row
-                (remove-row~ tree row))))))))
+                (remove-row tree row))))))))
   
   
-  (method (register-channel channel-name)
+  (method (register-channel self channel-name)
     (define (channel-preferences)
-      (or (find-component~ preferences channel-name)
-          (find-component~ preferences #f)
+      (or (find-component preferences channel-name)
+          (find-component preferences #f)
           (qala-channel-preferences)))
     
     (let ((pref (channel-preferences)))
@@ -412,49 +419,49 @@
         channel)))
   
   
-  (method (unregister-channel channel)
+  (method (unregister-channel self channel)
     (set! channels (remove! channel channels)))
   
   
-  (method (find-channel name)
-    (find channels name key: get-name~ test: equal? return: 'item))
+  (method (find-channel self name)
+    (find channels name key: get-name test: equal? return: 'item))
   
   
-  (method (require-channel name)
-    (or (find-channel name)
+  (method (require-channel self name)
+    (or (find-channel self name)
         (error "Unregistered channel: {a}" name)))
   
   
-  (method (select-channel channel)
-    (set! channel~self channel)
-    (let ((tree (locate-members)))
-      (remove-every-row~ tree)
+  (method (select-channel self channel)
+    (set! self.channel channel)
+    (let ((tree (locate-members self)))
+      (remove-every-row tree)
       (when channel
-        (members-update channel)))
-    (name-update channel))
+        (members-update self channel)))
+    (name-update self channel))
   
   
-  (method (name-update channel)
-    (execute-event
+  (method (name-update self channel)
+    (send-event
       (lambda ()
-        (set-title~ (get-host) (if (not channel)
-                                   "IRC"
-                                 (present~ channel)))
-        (clear-text~ (get-text~ (locate-shell))))))
+        (set-title (get-host self) (if (not channel)
+                                       "IRC"
+                                     (present channel)))
+        (clear-text (get-text (locate-shell self))))))
   
   
-  (method (topic-update channel)
-    (execute-event
+  (method (topic-update self channel)
+    (send-event
       (lambda ()
-        (set-title~ (get-host) (present~ channel)))))
+        (set-title (get-host self) (present channel)))))
   
   
-  (method (topic-owner-update channel)
+  (method (topic-owner-update self channel)
     )
   
   
-  (method (members-update channel)
-    (fill-members (get-members~ channel)))
+  (method (members-update self channel)
+    (fill-members self (get-members channel)))
 
   
   ;;;
@@ -462,10 +469,10 @@
   ;;;
   
   
-  (method (fill-members member-names)
-    (let ((tree (locate-members)))
-      (remove-every-row~ tree)
-      (with-update-locked~ tree
+  (method (fill-members self member-names)
+    (let ((tree (locate-members self)))
+      (remove-every-row tree)
+      (with-update-locked tree
         (lambda ()
           (define (standardize-name name)
             (if (starts-with? name "@")
@@ -473,7 +480,7 @@
               name))
           
           (for-each (lambda (member-name)
-                      (add-row~ tree children: (list (new Tree-Node title: member-name)) user-data: (standardize-name member-name)))
+                      (add-row tree children: (list (new Tree-Node title: member-name)) user-data: (standardize-name member-name)))
                     (sort di<? member-names))))))
 
   
@@ -482,11 +489,11 @@
   ;;;
   
   
-  (method (process-command command)
+  (method protected (process-command self command)
     (if (not client)
         (bell)
-      (let ((channel-name (and channel (get-name~ channel))))
-        (process~ client channel-name command)))))
+      (let ((channel-name (and channel (get-name channel))))
+        (process client channel-name command)))))
 
 
 ;;;
@@ -505,24 +512,24 @@
   (slot members-receiving? initialize #f  accessors generate)
   
   
-  (method override (initialize name preferences)
-    (nextmethod)
-    (set! name~self name)
-    (set! preferences~self preferences))
+  (method override (initialize self name preferences)
+    (nextmethod self)
+    (set! self.name name)
+    (set! self.preferences preferences))
   
   
-  (method override (print output readably)
+  (method override (print self output readably)
     (print-unreadable self output
       (lambda (output)
         (format output "{a}" name))))
   
   
-  (method (present)
+  (method (present self)
     (format "{a}{? : {a}~}" name topic))
   
   
-  (method (get-color)
-    (get-color~ preferences)))
+  (method (get-color self)
+    (get-color preferences)))
 
 
 ;;;
@@ -553,19 +560,19 @@
     (<install> left-padding: 1 top-padding: 1))
   
   
-  (method override (new-model)
+  (method override (new-model self)
     (new Text-Model wrap?: #t))
 
   
-  (method override (install rest)
-    (nextmethod rest)
-    (let ((pref (preferences)))
-      (add-style 'Emphasis  {Text-Style Base font: {Font Label-Bold}})
-      (add-style 'Command   {Text-Style Base})
-      (add-style 'Self      {Text-Style Base color: {Color Dark-Green}})
-      (add-style 'Message   {Text-Style Base color: {Color Dark-Blue}})
-      (add-style 'Highlight {Text-Style Base color: {Color Dark-Red}})
-      (add-style 'Mark      {Text-Style Base highlight: {Color Light-Red}}))))
+  (method override (install self rest)
+    (nextmethod self rest)
+    (let ((pref (preferences self)))
+      (add-style self 'Emphasis  {Text-Style Base font: {Font Label-Bold}})
+      (add-style self 'Command   {Text-Style Base})
+      (add-style self 'Self      {Text-Style Base color: {Color Dark-Green}})
+      (add-style self 'Message   {Text-Style Base color: {Color Dark-Blue}})
+      (add-style self 'Highlight {Text-Style Base color: {Color Dark-Red}})
+      (add-style self 'Mark      {Text-Style Base highlight: {Color Light-Red}}))))
 
 
 ;;;
@@ -576,10 +583,10 @@
 (class IRC-Command-Shell extends Command-Shell
   
   
-  (method override (form-model form)
-    (case (get-name~ form)
+  (method override (form-model self form)
+    (case (get-name form)
       ((text) IRC-Command-Text-View)
-      (else (nextmethod form)))))
+      (else (nextmethod self form)))))
 
 
 ;;;
@@ -594,26 +601,26 @@
     (<install> left-padding: 1 top-padding: 1))
   
   
-  (method override (default-mode)
+  (method override (default-mode self)
     (new IRC-Mode self))
   
   
-  (method override (focus-select-all)
-    (set-selection (field-range (last-field))))
+  (method override (focus-select-all self)
+    (set-selection self (field-range self (last-field self))))
   
   
-  (method override (focus-empty)
+  (method override (focus-empty self)
     )
   
   
-  (method (clear-text)
-    (clear-all)
-    (let ((view (find-ascendant IRC-View)))
-      (let ((channel (get-channel~ view)))
+  (method protected (clear-text self)
+    (clear-all self)
+    (let ((view (find-ascendant self IRC-View)))
+      (let ((channel (get-channel view)))
         (when channel
-          (let ((color (or (get-color~ channel) {Color Dark-Blue})))
-            (add-style 'Separator (new Text-Style base: 'Base color: color))
-            (insert-styled (format "{a}: " (get-name~ channel)) 'Separator)))))))
+          (let ((color (or (get-color channel) {Color Dark-Blue})))
+            (add-style self 'Separator (new Text-Style base: 'Base color: color))
+            (insert-styled self (format "{a}: " (get-name channel)) 'Separator)))))))
 
 
 ;;;
@@ -624,17 +631,17 @@
 (class IRC-Mode extends Command-Mode
   
   
-  (method override (mode-actions)
+  (method override (mode-actions self)
     (find-actions 'irc-mode))
   
   
-  (method (on-finish evt)
-    (process-command~ (get-guest~ text) (last-content~ text))
-    (clear-text~ text))
+  (method (on-finish self evt)
+    (process-command (get-guest text) (last-content text))
+    (clear-text text))
   
   
-  (method (on-cancel evt)
-    (cancel)))
+  (method (on-cancel self evt)
+    (cancel self)))
 
 
 ;;;

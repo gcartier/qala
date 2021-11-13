@@ -11,14 +11,25 @@
 
 (import (jazz.action)
         (jazz.application)
+        (jazz.command)
         (jazz.debuggee)
+        (jazz.debuggee.ui)
+        (jazz.debuggee.view)
+        (jazz.editor)
         (jazz.editor.lisp)
         (jazz.editor.jazz)
+        (jazz.feedback)
         (jazz.graphic)
+        (jazz.handler)
         (jazz.io)
-        (jazz.jml)
+        (jazz.layout)
+        (jazz.markup)
         (jazz.menu)
         (jazz.platform)
+        (jazz.reference)
+        (jazz.resource)
+        (jazz.settings)
+        (jazz.text.preferences)
         (jazz.ui)
         (jazz.ui.dialog)
         (jazz.version)
@@ -65,42 +76,45 @@
 ;;;
 
 
+(hub connect)
+
+
 (class Qala-Application extends Application
 
   
-  (method override (process-name)
+  (method override (process-name self)
     "Qala")
   
   
-  (method override (new-toplevel)
+  (method override (new-toplevel self)
     (new Qala-Toplevel))
   
   
-  (method override (initialize-settings)
+  (method override (initialize-settings self)
     (let ((file {File Home ".qala" ".settings"}))
-      (when (not (exists?~ file))
-        (create~ file))
+      (when (not (exists? file))
+        (create file))
       (set! settings (new File-Settings file: file))))
   
   
-  (method override (default-preferences)
+  (method override (default-preferences self)
     (new Qala-Preferences))
   
   
-  (method override (default-bindings)
+  (method override (default-bindings self)
     (new Qala-Bindings))
   
   
-  (method override (default-workspaces)
+  (method override (default-workspaces self)
     (new Qala-Workspaces))
 
   
-  (method override (conclude-environment)
-    (nextmethod)
+  (method override (conclude-environment self)
+    (nextmethod self)
     (register-reader-extension "qalaini"
       (lambda ()
         jazz-readtable))
-    (load-qalaini))
+    (load-qalaini self))
 
   
   ;;;
@@ -112,9 +126,9 @@
     {File Home ".qala" ".qalaini"})
   
   
-  (method (load-qalaini)
-    (when (exists?~ qalaini)
-      (load-script (parse~ qalaini))))
+  (method (load-qalaini self)
+    (when (exists? qalaini)
+      (load-script (parse qalaini))))
 
   
   ;;;
@@ -122,13 +136,13 @@
   ;;;
 
 
-  (method override (default-frame-class)
+  (method override (default-frame-class self)
     IRC-View)
 
 
-  (method override (known-extension-frame-class ext)
+  (method override (known-extension-frame-class self ext)
     (cond ((member? ext '("qalaini") test: extension=?) Qala-Text-View)
-          (else (nextmethod ext))))
+          (else (nextmethod self ext))))
 
   
   ;;;
@@ -140,31 +154,31 @@
     (choose-file extensions: '(("Qala Ini" . "qalaini"))))
   
   
-  (method (on-test evt)
-    (explore-views~ (jazz.debuggee:current-view-debugger)))
+  (method (on-test self evt)
+    (explore-views (current-view-debugger)))
   
   
-  (method (on-edit-ini evt)
+  (method (on-edit-ini self evt)
     (let ((file (choose-qalaini)))
       (edit-document file)))
   
   
-  (method (on-load-ini evt)
+  (method (on-load-ini self evt)
     (let ((file (choose-qalaini)))
       (with-cursor :wait
         (lambda ()
-          (load-script (parse~ file))))))
+          (load-script (parse file))))))
   
   
-  (method (on-execute-connect evt)
+  (method (on-execute-connect self evt)
     (with-cursor :wait
       (lambda ()
-        (let ((client (get-client~ (current-guest))))
+        (let ((client (get-client (current-guest))))
           ((qala-connect) client))))
     (user-message "connect executed"))
   
   
-  (method (on-execute-prelude evt)
+  (method (on-execute-prelude self evt)
     (with-cursor :wait
       (lambda ()
         ((qala-prelude))))
@@ -267,8 +281,8 @@
     (<install> caption-base: "Qala" size: {Dimension 1000 600}))
   
   
-  (method override (close-window)
-    (minimize)))
+  (method override (close-window self)
+    (minimize self)))
 
 
 ;;;
@@ -279,9 +293,9 @@
 (class Qala-Menubar extends Menubar
   
   
-  (method override (install rest)
-    (nextmethod rest)
-    (with-update-locked
+  (method override (install self rest)
+    (nextmethod self rest)
+    (with-update-locked self
       (lambda ()
         (new Label-Item parent: self name: 'file   content: (new File-Base-Menu))
         (new Label-Item parent: self name: 'edit   content: (new Edit-Base-Menu))

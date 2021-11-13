@@ -11,7 +11,7 @@
 
 (import (jazz.component)
         (jazz.graphic)
-        (jazz.jml))
+        (jazz.markup))
 
 
 ;;;

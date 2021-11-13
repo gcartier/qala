@@ -11,12 +11,13 @@
 
 (export (irregex)
         (jazz.graphic)
-        (jazz.jml)
+        (jazz.markup)
         (qala.preferences)
         (qala.settings))
 
 (import (jazz.ui)
         (jazz.view)
+        (jazz.workspace)
         (qala.irc)
         (qala.view))
 
@@ -27,4 +28,4 @@
 
 
 (definition public (make-qala-view)
-  (get-guest~ (new-frame IRC-View))))
+  (get-guest (new-frame IRC-View))))

@@ -9,7 +9,9 @@
 (module qala.settings jazz
 
 
-(import (jazz.jml)
+(import (jazz.component)
+        (jazz.markup)
+        (jazz.syntax (phase syntax))
         (qala.preferences))
 
 
@@ -28,13 +30,13 @@
 
 
 (define-setting qala-preferences
-  (instantiate~
+  (instantiate
     (<form>
       (<IRC-Preferences>))))
 
 
 (define-setting qala-channel-preferences
-  (instantiate~
+  (instantiate
     (<form>
       (<IRC-Channel-Preferences>))))
 

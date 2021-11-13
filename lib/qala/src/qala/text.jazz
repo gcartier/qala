@@ -11,8 +11,8 @@
 
 (import (jazz.editor.jazz)
         (jazz.graphic)
-        (jazz.jml)
         (jazz.locale)
+        (jazz.markup)
         (jazz.ui)
         (jazz.view)
         (jazz.window))
